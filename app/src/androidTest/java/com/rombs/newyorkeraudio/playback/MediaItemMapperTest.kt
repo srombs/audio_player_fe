@@ -1,0 +1,42 @@
+package com.rombs.newyorkeraudio.playback
+
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.rombs.newyorkeraudio.data.repository.TestNarration
+import com.rombs.newyorkeraudio.playback.library.toLibraryMediaItem
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+class MediaItemMapperTest {
+    @Test fun carCompletionIndicatorPreservesDescriptionAndMetadataOnlyBrowsing() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val node = com.rombs.newyorkeraudio.playback.library.LibraryNode("article", "Title", "Author",
+            playable = true, browsable = false, description = "Description", completed = true)
+        val item = node.toLibraryMediaItem(com.rombs.newyorkeraudio.playback.artwork.ArtworkCache(context))
+        assertNull(item.localConfiguration)
+        assertEquals("Listened · Description", item.mediaMetadata.subtitle.toString())
+        assertEquals("Listened · Description", item.mediaMetadata.description.toString())
+        assertEquals(androidx.media3.session.MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_FULLY_PLAYED,
+            item.mediaMetadata.extras!!.getInt(androidx.media3.session.MediaConstants.EXTRAS_KEY_COMPLETION_STATUS))
+    }
+
+    @Test fun mediaItemContainsNarrationMetadataAndDecodableArtwork() {
+        val article = TestNarration.article.copy(description = "An article description for the car display.")
+        val item = article.toMediaItem(InstrumentationRegistry.getInstrumentation().targetContext)
+        assertEquals(article.id, item.mediaId)
+        assertEquals(article.audio?.audioUrl, item.localConfiguration?.uri.toString())
+        assertEquals(article.title, item.mediaMetadata.title.toString())
+        assertEquals(article.author, item.mediaMetadata.artist.toString())
+        assertEquals(article.title, item.mediaMetadata.displayTitle.toString())
+        assertEquals(article.description, item.mediaMetadata.subtitle.toString())
+        assertEquals(article.description, item.mediaMetadata.description.toString())
+        assertEquals(article.imageUrl, item.mediaMetadata.artworkUri.toString())
+        assertEquals(1_630_000L, item.mediaMetadata.extras?.getLong(DURATION_METADATA_KEY))
+        assertNotNull(item.mediaMetadata.artworkData)
+        assertEquals(0x89, item.mediaMetadata.artworkData!![0].toInt() and 0xff)
+        assertEquals(article, item.toPlaybackArticle())
+    }
+}
