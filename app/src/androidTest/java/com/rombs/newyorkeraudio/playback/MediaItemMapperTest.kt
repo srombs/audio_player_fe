@@ -11,6 +11,26 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class MediaItemMapperTest {
+    @Test fun carBrowseSubtitleIncludesKnownDurationBeforeLongDescriptions() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val artwork = com.rombs.newyorkeraudio.playback.artwork.ArtworkCache(context)
+        for ((duration, label) in listOf(null to null, 0L to null, -1L to null,
+            1_000L to "1 min", 60_000L to "1 min", 1_630_000L to "27 min")) {
+            val node = com.rombs.newyorkeraudio.playback.library.LibraryNode("article", "Title", "Author",
+                playable = true, browsable = false, durationMs = duration, description = "Description ".repeat(60), completed = true)
+            val item = node.toLibraryMediaItem(artwork)
+            val expected = (if (label == null) "Listened · " else "Listened · $label · ") + node.description
+            assertEquals(expected.take(512), item.mediaMetadata.subtitle.toString())
+            assertEquals(expected.take(512), item.mediaMetadata.description.toString())
+            assertEquals("Title", item.mediaMetadata.title.toString())
+            assertEquals("Author", item.mediaMetadata.artist.toString())
+            assertEquals("article", item.mediaId)
+            assertNull(item.localConfiguration)
+            val withoutDescription = node.copy(description = null, completed = false).toLibraryMediaItem(artwork)
+            assertEquals(label, withoutDescription.mediaMetadata.subtitle?.toString())
+        }
+    }
+
     @Test fun carCompletionIndicatorPreservesDescriptionAndMetadataOnlyBrowsing() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val node = com.rombs.newyorkeraudio.playback.library.LibraryNode("article", "Title", "Author",

@@ -6,6 +6,10 @@ Native Kotlin and Jetpack Compose app for the separate FastAPI backend at
 The car integration and remaining steps are documented in
 [Android Auto implementation plan](ANDROID_AUTO_IMPLEMENTATION_PLAN.md).
 
+Review ticket 02 in the [HTML overview with phone and Android Auto mockups](docs/reviews/ticket-02/index.html).
+Open the HTML file directly in a browser; it works offline. The mockups illustrate
+the implemented duration behavior and are not captured device screenshots.
+
 ## Implemented: browsing, playback, and networking steps 1–6
 
 - Single `app` module with a Gradle wrapper and a dependency version catalog.
@@ -84,9 +88,13 @@ Android Auto receives fully-played indicators in issue lists, Continue Listening
 search results, and recent items from the same local store. Its host controls
 indicator presentation. The phone's All / Unlistened / Listened choice is shared
 across all issues and persisted locally across app restarts.
-Car browse descriptions also start with “Listened ·” for completed articles, or
-show “Listened” when no description exists. Phone descriptions keep their original
-text alongside the separate Listened label.
+Car browse subtitles include known narration duration before the description,
+with “Listened ·” first for completed articles (for example,
+“Listened · 27 min · Description”). Durations use whole minutes with a minimum
+of one minute. Unknown durations are omitted. Issue articles, search results,
+Continue Listening, and recent items carry this metadata without resolving audio
+while browsing. Phone descriptions keep their original text alongside the
+separate Listened label and existing narration-duration label.
 The history keeps one record per completed article and has no entry-count eviction;
 source URLs are excluded. It survives normal app updates/restarts, but clearing
 app data or uninstalling removes it. No backend changes or cross-device sync are
@@ -114,8 +122,13 @@ few seconds; clearing app data removes the cache. Playback speed is preserved fo
 an active session but is not persisted across restarts.
 
 Refreshing an issue retains previously resolved narration durations in the metadata
-cache. Returning to a saved article therefore displays both its elapsed time and
-the matching seek-bar position before playback resumes, without resolving audio.
+cache and returns the merged metadata to phone article rows and car browsing.
+Car catalog refreshes also retain duration when an explicitly narrated summary
+omits it; unknown availability preserves confirmed narration facts, while a
+confirmed absence clears narration metadata. Returning to a saved article
+therefore displays both its elapsed time and the matching seek-bar position
+before playback resumes, without resolving audio. Durations for articles that
+have never been resolved still depend on future backend summary metadata.
 
 ## Android Auto foundation: steps 1–6
 

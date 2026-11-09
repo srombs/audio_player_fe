@@ -117,6 +117,44 @@ class NetworkingTest {
         } finally { transport.close() }
     }
 
+    @Test fun `refreshed article rows receive learned durations across repository restart without resolving again`() = runBlocking {
+        for (availability in listOf("true", "null")) {
+            val storage = object : com.rombs.newyorkeraudio.data.repository.ArticleMetadataStorage {
+                var value: String? = null
+                override fun read() = value
+                override fun write(value: String) { this.value = value }
+            }
+            var summaries = ARTICLES
+            val transport = Transport { if (it.method == "POST") AUDIO else summaries }
+            try {
+                val repository = NetworkNewYorkerRepository(transport.api, storage)
+                assertNull(repository.getArticles(DATE).first().audio!!.durationMs)
+                repository.resolveAudio(URL)
+                summaries = ARTICLES.replace("\"audio_available\":true", "\"audio_available\":$availability")
+                    .replace("List title", "Updated list title")
+                val updated = repository.getArticles(DATE).first()
+                assertEquals("Updated list title", updated.title)
+                assertEquals(true, updated.audioAvailable)
+                assertEquals(123_000L, updated.audio!!.durationMs)
+                assertNull(updated.audio!!.audioUrl)
+                val restored = NetworkNewYorkerRepository(transport.api, storage).getArticles(DATE).first()
+                assertEquals(updated, restored)
+                assertFalse(storage.value!!.contains(MP3))
+                assertEquals(1, transport.requests.count { it.method == "POST" })
+            } finally { transport.close() }
+        }
+    }
+
+    @Test fun `article response larger than metadata cache still returns every row in order`() = runBlocking {
+        val rows = (0..200).joinToString(",") { """{"title":"Story $it","url":"$URL-$it","audio_available":true}""" }
+        val transport = Transport { """{"issue":$ISSUE,"fetched_at":"now","articles":[$rows]}""" }
+        try {
+            val articles = NetworkNewYorkerRepository(transport.api).getArticles(DATE)
+            assertEquals((0..200).map { "$URL-$it" }, articles.map { it.id })
+            assertEquals(1, transport.requests.size)
+        } finally { transport.close() }
+    }
+
     @Test fun `metadata lookup uses catalog without resolving audio`() = runBlocking {
         val transport = Transport { ARTICLES }
         try {

@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Ticket 02 review · Article durations</title>
+  <style>
+    :root { --paper:#f6f5ef; --ink:#202c29; --green:#253b35; --muted:#66716a; --line:#dce0d7; --accent:#dceec8; --white:#fffefa; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:inherit; text-underline-offset:4px; }
+    button,select { font:inherit; }
+    button,select,a { -webkit-tap-highlight-color:transparent; }
+    button,a,select { touch-action:manipulation; }
+    :focus-visible { outline:3px solid #739955; outline-offset:4px; }
+    .shell { width:min(1280px,calc(100% - 80px)); margin:auto; }
+    .topbar { border-bottom:1px solid var(--line); }
+    .topbar .shell { display:flex; align-items:center; justify-content:space-between; min-height:76px; gap:20px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:650; letter-spacing:-.3px; }
+    .brand-mark { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; background:var(--green); color:var(--white); }
+    .icon { width:20px; height:20px; display:inline-block; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
+    nav { display:flex; gap:28px; font-size:13px; color:var(--muted); }
+    nav a { text-decoration:none; }
+    nav a:hover { color:var(--green); text-decoration:underline; }
+    .hero { padding:60px 0 42px; display:grid; grid-template-columns:1fr 292px; align-items:end; gap:60px; }
+    .eyebrow { font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:1.7px; text-transform:uppercase; color:var(--muted); }
+    h1 { font:normal clamp(42px,5.5vw,68px)/1.05 Georgia,serif; letter-spacing:-2.5px; margin:17px 0 22px; max-width:760px; }
+    .hero p { max-width:650px; font-size:17px; color:var(--muted); margin:0; }
+    .state { display:inline-flex; align-items:center; gap:9px; background:#e7eddf; color:#34502c; font-size:12px; font-weight:650; padding:7px 12px; border-radius:5px; margin-top:24px; }
+    .dot { width:6px; height:6px; border-radius:50%; background:#5c8045; }
+    .hero-aside { padding:0 0 5px 26px; border-left:1px solid var(--line); }
+    .test-number { display:block; font:normal 76px/1 Georgia,serif; letter-spacing:-4px; }
+    .test-caption { color:var(--muted); font-size:13px; display:block; margin:6px 0 20px; }
+    .branch { display:block; font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; color:var(--muted); }
+    .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:30px; padding:26px 0 38px; border-top:1px solid var(--line); }
+    .summary-item { display:flex; gap:13px; align-items:start; }
+    .summary-item>.icon { margin-top:3px; color:#648253; }
+    .summary strong { display:block; font-size:14px; margin-bottom:3px; font-weight:650; }
+    .summary p { margin:0; color:var(--muted); font-size:13px; }
+    .preview-section { padding:32px 0 42px; border-top:1px solid var(--line); }
+    .section-heading { display:flex; align-items:baseline; gap:16px; margin-bottom:22px; }
+    .section-heading .number { font:11px ui-monospace,monospace; color:var(--muted); }
+    h2 { font:normal 30px/1.2 Georgia,serif; letter-spacing:-.6px; margin:0; }
+    .mockup-note { display:flex; align-items:start; gap:10px; color:#58685b; background:#e9eee4; padding:13px 16px; border-radius:6px; font-size:13px; margin-bottom:24px; }
+    .mockup-note .icon { margin-top:1px; width:17px; height:17px; }
+    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:10px; }
+    .segmented { display:inline-flex; padding:4px; gap:4px; background:#e9ebe4; border:1px solid #e0e4da; border-radius:9px; }
+    .segmented button { background:transparent; border:0; color:var(--muted); font-weight:600; font-size:13px; padding:9px 18px; border-radius:6px; cursor:pointer; }
+    .segmented button[aria-pressed="true"] { background:var(--green); color:white; box-shadow:0 2px 4px #0001; }
+    .scenario-control { display:flex; gap:10px; align-items:center; font-size:12px; color:var(--muted); }
+    select { padding:9px 32px 9px 12px; border:1px solid #d0d8c9; background:var(--white); border-radius:7px; color:var(--ink); font-size:12px; max-width:240px; }
+    .comparison-note { font-size:13px; color:var(--muted); min-height:42px; margin:15px 0 18px; max-width:850px; }
+    .mockup-stage { display:grid; grid-template-columns:354px minmax(0,1fr); gap:38px; align-items:start; background:#eaece5; border:1px solid #dfe3d9; border-radius:12px; padding:28px; }
+    .capture-label { display:flex; justify-content:space-between; align-items:center; font:10px/1.5 ui-monospace,monospace; letter-spacing:1.3px; color:#536153; padding:0 6px 14px; text-transform:uppercase; }
+    .capture { min-width:0; }
+    .capture-foot { margin:13px 6px 0; color:#566252; font-size:11px; line-height:1.5; }
+    .phone { width:100%; border:7px solid #202522; border-radius:34px; background:#faf8f3; overflow:hidden; box-shadow:0 10px 24px #243b351c; position:relative; }
+    .phone-screen { height:688px; overflow:hidden; }
+    .statusbar { padding:13px 18px 8px; font-size:11px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+    .status-icons { display:flex; gap:7px; align-items:center; }
+    .status-icons .icon { width:12px; height:12px; stroke-width:2; }
+    .phone-toolbar { padding:9px 16px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .phone-toolbar-title { display:flex; gap:17px; align-items:center; font:22px Georgia,serif; }
+    .phone-content { padding:3px 16px 22px; }
+    .issue-title { font:27px/1.2 Georgia,serif; letter-spacing:-.6px; margin:4px 0 8px; }
+    .issue-subtitle { font-size:11px; margin:0; color:#747971; }
+    .chips { display:flex; gap:7px; margin:13px 0 16px; font-size:10px; }
+    .chip { padding:4px 10px; border:1px solid #c3ccbe; border-radius:7px; color:#485445; }
+    .chip.selected { background:#dfe6d9; border-color:#dfe6d9; }
+    .article-card { display:flex; gap:11px; border:1px solid #d6dacd; border-radius:8px; padding:12px; margin-bottom:12px; position:relative; }
+    .article-card.highlight { border-color:#9aaa88; background:#f6f7ee; }
+    .cover { width:60px; height:79px; flex:none; overflow:hidden; border-radius:3px; }
+    .article-copy { flex:1; min-width:0; }
+    .article-section { font-size:9px; color:#6c7469; margin-bottom:4px; }
+    .article-title { font:17px/1.15 Georgia,serif; margin:0 0 6px; }
+    .article-desc { font-size:10px; line-height:1.5; color:#626a5f; margin:5px 0 7px; }
+    .listened-label { font-size:9px; font-weight:650; color:#38543a; }
+    .narration { color:var(--green); font-size:10px; font-weight:600; display:flex; align-items:center; gap:5px; margin-top:7px; }
+    .narration .icon { width:12px; height:12px; }
+    .narration .duration-highlight { background:#dcebc8; padding:2px 5px; margin-left:-5px; border-radius:3px; }
+    .phone-bottom { height:21px; display:grid; place-items:center; background:#faf8f3; }
+    .phone-bottom span { width:86px; height:4px; background:#26342b; border-radius:20px; }
+    .car-column { padding-top:0; min-width:0; }
+    .car { background:#111517; border:8px solid #252b2b; border-radius:20px; overflow:hidden; box-shadow:0 10px 24px #243b351c; color:#e9eee8; display:grid; grid-template-columns:55px minmax(0,1fr); min-height:390px; }
+    .car-rail { background:#1a2022; display:flex; flex-direction:column; align-items:center; padding:17px 0 13px; gap:24px; }
+    .rail-round { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; color:#c2d7c4; }
+    .rail-round.active { background:#33493e; }
+    .car-clock { margin-top:auto; font-size:10px; color:#c6d0cb; }
+    .car-body { min-width:0; }
+    .car-header { display:flex; align-items:center; gap:15px; padding:21px 19px 18px; border-bottom:1px solid #323a39; }
+    .car-header .icon { width:19px; height:19px; }
+    .car-header strong { font-size:16px; font-weight:550; }
+    .car-header small { display:block; color:#8f9d95; font-size:10px; margin-top:2px; }
+    .car-article { display:flex; align-items:center; gap:12px; padding:17px 17px; border-bottom:1px solid #29312e; }
+    .car-article:first-child { background:#1b2420; }
+    .car-article .cover { width:48px; height:49px; border-radius:5px; }
+    .car-copy { min-width:0; flex:1; }
+    .car-title { font-size:15px; letter-spacing:-.2px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 0 7px; }
+    .car-desc { font-size:11px; line-height:1.5; color:#b4c0b6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0; }
+    .car-desc .duration-highlight { color:#daf0b7; font-weight:650; }
+    .car-article>.icon { width:15px; height:15px; color:#9aad9b; }
+    .car-bottom { display:flex; align-items:center; justify-content:space-between; color:#b0bdb4; padding:15px 18px; font-size:10px; }
+    .car-bottom span { display:flex; align-items:center; gap:7px; }
+    .car-bottom .icon { width:13px; height:13px; }
+    .annotation { margin:26px 4px 0; border-left:2px solid #96ab7d; padding:0 0 0 16px; }
+    .annotation h3 { font:normal 20px Georgia,serif; margin:0 0 8px; }
+    .annotation p { color:#606e5e; font-size:13px; margin:0; }
+    .download-links { display:flex; flex-wrap:wrap; gap:10px 22px; font-size:12px; margin:22px 4px 0; color:#3b533b; }
+    .download-links a { display:flex; align-items:center; gap:6px; }
+    .download-links .icon { width:14px; height:14px; }
+    .details { display:grid; grid-template-columns:1.1fr 1fr; gap:55px; padding:32px 0 50px; border-top:1px solid var(--line); }
+    .details h2 { font-size:27px; margin-bottom:22px; }
+    .checks { margin:0; padding:0; list-style:none; }
+    .checks li { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:13px 0; border-bottom:1px solid var(--line); font-size:13px; }
+    .check-state { display:flex; align-items:center; gap:6px; font-size:11px; color:#3d6134; white-space:nowrap; }
+    .check-state .icon { width:14px; height:14px; }
+    .check-state.pending { color:#85724b; }
+    .remaining { background:#eeeee5; padding:23px 25px; border-radius:7px; margin-top:1px; }
+    .remaining h3 { font-size:13px; font-weight:650; margin:0 0 10px; }
+    .remaining p { margin:0 0 12px; font-size:13px; color:var(--muted); }
+    .remaining p:last-child { margin-bottom:0; }
+    details { margin-top:20px; font-size:12px; color:var(--muted); }
+    summary { cursor:pointer; color:var(--green); font-weight:600; }
+    .sources { display:flex; gap:18px; flex-wrap:wrap; margin-top:16px; font-size:12px; }
+    footer { padding:22px 0 28px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); display:flex; justify-content:space-between; gap:20px; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .svg-definitions { position:absolute; width:0; height:0; overflow:hidden; }
+    @media (max-width:1120px) {
+      .shell { width:calc(100% - 48px); }
+      .mockup-stage { grid-template-columns:318px minmax(0,1fr); gap:22px; padding:22px; }
+      .car { grid-template-columns:44px minmax(0,1fr); }
+      .car-article { padding:17px 12px; gap:9px; }
+      .car-header { padding-left:12px; gap:10px; }
+      .car-title { font-size:13px; }
+      .car-desc { font-size:10px; }
+      .car-article .cover { width:37px; height:44px; }
+      .hero { gap:30px; }
+    }
+    @media (max-width:900px) {
+      .mockup-stage { grid-template-columns:minmax(0,1fr); gap:34px; }
+      .phone-capture { width:340px; max-width:100%; margin:auto; }
+      .car { min-height:360px; }
+      .car-title { font-size:16px; }
+      .car-desc { font-size:12px; }
+      .car-article .cover { width:48px; height:49px; }
+      .hero { grid-template-columns:1fr 180px; gap:20px; }
+      .hero-aside { padding-left:20px; }
+      .test-number { font-size:60px; }
+      .summary { gap:20px; }
+      .details { gap:30px; }
+      .toolbar { align-items:start; }
+      .scenario-control { flex-direction:column; align-items:start; gap:5px; }
+    }
+    @media (max-width:600px) {
+      .shell { width:calc(100% - 32px); }
+      .topbar .shell { min-height:65px; flex-wrap:wrap; padding:12px 0; gap:10px; }
+      .brand { font-size:13px; }
+      nav { gap:14px; font-size:11px; }
+      nav a:first-child { display:none; }
+      .hero { grid-template-columns:1fr; padding:36px 0 30px; gap:28px; }
+      h1 { font-size:44px; letter-spacing:-1.8px; }
+      .hero p { font-size:15px; }
+      .hero-aside { border-left:0; border-top:1px solid var(--line); padding:18px 0 0; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+      .test-number { font-size:45px; letter-spacing:-2px; }
+      .test-caption { margin:0; }
+      .branch { flex-basis:100%; font-size:10px; }
+      .summary { grid-template-columns:1fr; gap:20px; padding-bottom:25px; }
+      .section-heading { gap:11px; }
+      h2 { font-size:26px; }
+      .toolbar { flex-direction:column; gap:16px; }
+      .scenario-control { width:100%; flex-direction:row; align-items:center; justify-content:space-between; }
+      select { max-width:215px; min-width:0; flex:1; }
+      .segmented { width:100%; }
+      .segmented button { flex:1; padding:9px 10px; }
+      .mockup-stage { padding:16px 10px; gap:28px; }
+      .phone-screen { height:700px; }
+      .car { grid-template-columns:34px minmax(0,1fr); border-width:5px; border-radius:13px; min-height:320px; }
+      .car-rail { gap:21px; padding-top:15px; }
+      .rail-round { width:27px; height:27px; }
+      .rail-round .icon { width:15px; height:15px; }
+      .car-header { padding:14px 10px; gap:7px; }
+      .car-header strong { font-size:12px; }
+      .car-header .icon { width:15px; height:15px; }
+      .car-header small { font-size:8px; }
+      .car-article { padding:13px 8px; gap:8px; }
+      .car-title { font-size:11px; margin-bottom:5px; }
+      .car-desc { font-size:9px; }
+      .car-article .cover { width:32px; height:37px; }
+      .car-article>.icon { display:none; }
+      .car-bottom { font-size:8px; padding:13px 9px; }
+      .details { grid-template-columns:1fr; gap:32px; }
+      footer { flex-direction:column; gap:6px; }
+    }
+    @media print {
+      body { background:white; }
+      .shell { width:100%; }
+      nav,.toolbar,.download-links { display:none; }
+      .hero { padding-top:20px; }
+      .mockup-stage { break-inside:avoid; }
+      .details { break-inside:avoid; }
+      * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+  </style>
+</head>
+<body>
+  <svg class="svg-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="headphones" viewBox="0 0 24 24"><path d="M4 14v-3a8 8 0 0 1 16 0v3M4 13H3v7h4v-7H4Zm16 0h1v7h-4v-7h3Z"/></symbol>
+      <symbol id="arrow" viewBox="0 0 24 24"><path d="m14 5-7 7 7 7M7 12h14"/></symbol>
+      <symbol id="refresh" viewBox="0 0 24 24"><path d="M20 9a8 8 0 1 0 0 7M20 3v6h-6"/></symbol>
+      <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v6l4 2"/></symbol>
+      <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></symbol>
+      <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+      <symbol id="play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="grid" viewBox="0 0 24 24"><rect x="4" y="4" width="5" height="5" rx="1"/><rect x="15" y="4" width="5" height="5" rx="1"/><rect x="4" y="15" width="5" height="5" rx="1"/><rect x="15" y="15" width="5" height="5" rx="1"/></symbol>
+      <symbol id="map" viewBox="0 0 24 24"><path d="m4 5 5-2 6 3 5-2v15l-5 2-6-3-5 2V5Zm5-2v15m6-12v15"/></symbol>
+      <symbol id="battery" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 10v4M5 10h10v4H5Z"/></symbol>
+      <symbol id="signal" viewBox="0 0 24 24"><path d="M4 20v-3m5 3v-7m5 7V9m5 11V4"/></symbol>
+      <symbol id="city-art" viewBox="0 0 80 100"><path fill="#9cae9a" d="M0 0h80v100H0z"/><circle fill="#e6dcad" cx="56" cy="24" r="15"/><path fill="#35564e" d="M0 49h15V36h14v20h11V42h16v15h10V38h14v62H0z"/><path fill="#203b39" d="M0 75h18V58h16v20h12V64h18v11h16v25H0z"/><path stroke="#d6c98c" stroke-width="2" d="M7 57h3m10-12h3m20 8h3m24-3h3M23 67h3m26 5h3m15 11h3M5 85h3m27 5h3"/><path fill="#ddc7a4" d="m38 100 5-15 4 15z"/></symbol>
+      <symbol id="garden-art" viewBox="0 0 80 100"><path fill="#e0c88d" d="M0 0h80v100H0z"/><path fill="#728b65" d="M5 85C0 47 30 39 32 17c16 28 3 49-16 66m14 17c-1-29 15-53 41-60-2 33-12 49-41 60"/><path fill="#354d36" d="M25 100c-6-16-6-42 1-56m6 56c10-27 20-40 35-53"/><circle fill="#a96140" cx="62" cy="24" r="10"/><circle fill="#eadab3" cx="17" cy="23" r="8"/></symbol>
+      <symbol id="sea-art" viewBox="0 0 80 100"><path fill="#b6c9cf" d="M0 0h80v100H0z"/><circle fill="#eae3c4" cx="20" cy="24" r="12"/><path fill="#517d89" d="M0 57c20-22 30 23 52 0s28-7 28-7v50H0"/><path fill="#285563" d="M0 78c21-22 33 13 53-1s27-4 27-4v27H0"/><path stroke="#d7e2dc" stroke-width="2" fill="none" d="M8 65h13m26 24h20M3 92h14m38-28h14"/></symbol>
+    </defs>
+  </svg>
+  <header class="topbar">
+    <div class="shell">
+      <div class="brand"><span class="brand-mark"><svg class="icon"><use href="#headphones"/></svg></span> New Yorker Audio <span style="font-weight:400;color:var(--muted)">/ review</span></div>
+      <nav aria-label="Review sections"><a href="#overview">Overview</a><a href="#preview">Mockups</a><a href="#checks">Checks</a></nav>
+    </div>
+  </header>
+  <main class="shell">
+    <section id="overview" class="hero" aria-labelledby="page-title">
+      <div>
+        <div class="eyebrow">Ticket 02 · Article duration</div>
+        <h1>Know the length.<br>Keep your place.</h1>
+        <p>Known article lengths now survive a list refresh and appear in Android Auto. Here’s a visual walkthrough of what changed.</p>
+        <div class="state"><span class="dot"></span> Code complete · host review pending</div>
+      </div>
+      <aside class="hero-aside" aria-label="Implementation verification">
+        <span class="test-number">169</span><span class="test-caption">JVM tests passed</span>
+        <span class="branch">ticket-02-known-article-durations</span>
+        <span class="branch">Review snapshot · ticket 02</span>
+      </aside>
+    </section>
+    <div class="summary" aria-label="Changes delivered">
+      <div class="summary-item"><svg class="icon"><use href="#refresh"/></svg><div><strong>Duration stays after refresh</strong><p>The phone receives the duration it already learned, including after a restart.</p></div></div>
+      <div class="summary-item"><svg class="icon"><use href="#clock"/></svg><div><strong>Length in the car’s article list</strong><p>Known minutes appear before descriptions, after any Listened label.</p></div></div>
+      <div class="summary-item"><svg class="icon"><use href="#headphones"/></svg><div><strong>One rule across browse views</strong><p>Issue articles, search, Continue Listening, and recent items carry known duration.</p></div></div>
+    </div>
+    <section id="preview" class="preview-section" aria-labelledby="preview-title">
+      <div class="section-heading"><span class="number">01 /</span><h2 id="preview-title">See the change</h2></div>
+      <div class="mockup-note"><svg class="icon"><use href="#info"/></svg><span><strong>Illustrative mockups, not captured app screenshots.</strong> Sample stories and artwork are fictional. The phone follows the existing app layout; Android Auto controls the actual car layout and truncation.</span></div>
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="Compare ticket 02 behavior">
+          <button type="button" id="before-button" data-mode="before" aria-pressed="false">Before ticket 02</button>
+          <button type="button" id="after-button" data-mode="after" aria-pressed="true">After ticket 02</button>
+        </div>
+        <div class="scenario-control"><label for="scenario">First article</label><select id="scenario"><option value="listened">Known duration · listened</option><option value="unlistened">Known duration · unlistened</option><option value="unknown">Duration unknown</option><option value="short">Audio under one minute</option></select></div>
+      </div>
+      <p class="comparison-note" id="comparison-note" aria-live="polite">After refresh, the phone keeps its known 27-minute label. Android Auto now includes that length in the article subtitle.</p>
+      <div class="mockup-stage">
+        <div class="capture phone-capture" id="phone-capture">
+          <div class="capture-label"><span>Phone app</span><span class="mode-label">After · mockup</span></div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="statusbar"><span>9:41</span><span class="status-icons"><svg class="icon"><use href="#signal"/></svg><svg class="icon"><use href="#battery"/></svg></span></div>
+              <div class="phone-toolbar"><div class="phone-toolbar-title"><svg class="icon"><use href="#arrow"/></svg> Articles</div><svg class="icon"><use href="#refresh"/></svg></div>
+              <div class="phone-content">
+                <h3 class="issue-title">October 12, 2026</h3>
+                <p class="issue-subtitle">Browse the articles in this issue.</p>
+                <div class="chips" aria-label="Existing phone filters (illustrative)"><span class="chip selected">All</span><span class="chip">Unlistened</span><span class="chip">Listened</span></div>
+                <div class="article-card highlight">
+                  <svg class="cover" aria-hidden="true"><use href="#city-art"/></svg>
+                  <div class="article-copy"><div class="article-section">Reporting</div><h4 class="article-title">The City After Midnight</h4><div class="listened-label" id="phone-listened">Listened</div><p class="article-desc">A late-night walk through a changing city.</p><div class="narration"><svg class="icon"><use href="#headphones"/></svg><span id="phone-duration" class="duration-highlight">27 min · Narrated</span></div></div>
+                </div>
+                <div class="article-card">
+                  <svg class="cover" aria-hidden="true"><use href="#garden-art"/></svg>
+                  <div class="article-copy"><div class="article-section">Personal History</div><h4 class="article-title">A Garden of Small Things</h4><p class="article-desc">What grows in the spaces we leave behind.</p><div class="narration"><svg class="icon"><use href="#headphones"/></svg><span id="phone-second-duration">8 min · Narrated</span></div></div>
+                </div>
+                <div class="article-card">
+                  <svg class="cover" aria-hidden="true"><use href="#sea-art"/></svg>
+                  <div class="article-copy"><div class="article-section">Books</div><h4 class="article-title">The Shape of the Shore</h4><p class="article-desc">Stories at the edge of the water.</p><div class="narration"><svg class="icon"><use href="#headphones"/></svg><span>Narrated</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-bottom"><span></span></div>
+          </div>
+          <p class="capture-foot">Illustrative mockup · The phone’s existing duration label now receives retained metadata after refresh.</p>
+        </div>
+        <div class="car-column">
+          <div class="capture" id="car-capture">
+            <div class="capture-label"><span>Android Auto · article list</span><span class="mode-label">After · mockup</span></div>
+            <div class="car">
+              <div class="car-rail" aria-hidden="true"><span class="rail-round"><svg class="icon"><use href="#map"/></svg></span><span class="rail-round active"><svg class="icon"><use href="#headphones"/></svg></span><span class="rail-round"><svg class="icon"><use href="#grid"/></svg></span><span class="car-clock">9:41</span></div>
+              <div class="car-body">
+                <div class="car-header"><svg class="icon"><use href="#arrow"/></svg><div><strong>October 12, 2026</strong><small>New Yorker Audio</small></div></div>
+                <div>
+                  <div class="car-article"><svg class="cover" aria-hidden="true"><use href="#city-art"/></svg><div class="car-copy"><h4 class="car-title">The City After Midnight</h4><p class="car-desc" id="car-primary-subtitle"><span>Listened · </span><span class="duration-highlight">27 min · </span>A late-night walk through a changing city.</p></div><svg class="icon" id="car-listened"><use href="#check"/></svg></div>
+                  <div class="car-article"><svg class="cover" aria-hidden="true"><use href="#garden-art"/></svg><div class="car-copy"><h4 class="car-title">A Garden of Small Things</h4><p class="car-desc"><span class="duration-highlight" id="car-second-duration">8 min · </span>What grows in the spaces we leave behind.</p></div></div>
+                  <div class="car-article"><svg class="cover" aria-hidden="true"><use href="#sea-art"/></svg><div class="car-copy"><h4 class="car-title">The Shape of the Shore</h4><p class="car-desc">Stories at the edge of the water.</p></div></div>
+                </div>
+                <div class="car-bottom"><span><svg class="icon"><use href="#headphones"/></svg>New Yorker Audio</span><span>Articles</span></div>
+              </div>
+            </div>
+            <p class="capture-foot">Illustrative mockup · Android Auto owns sizing, row layout, and completion-marker appearance.</p>
+          </div>
+          <div class="annotation"><h3 id="annotation-title">The useful detail comes first.</h3><p id="annotation-text">“Listened · 27 min” precedes the description, so the length is available even when the car truncates a long subtitle. The third article has no known duration, so no number is invented.</p></div>
+          <div class="download-links" aria-label="Download mockup screenshots"><a href="screenshots/phone-after.png" download><svg class="icon"><use href="#download"/></svg>Phone PNG</a><a href="screenshots/car-after.png" download><svg class="icon"><use href="#download"/></svg>Android Auto PNG</a><a href="screenshots/phone-before.png" download>Phone before PNG</a><a href="screenshots/car-before.png" download>Car before PNG</a></div>
+        </div>
+      </div>
+    </section>
+    <section id="checks" class="details" aria-labelledby="checks-title">
+      <div>
+        <div class="section-heading"><span class="number">02 /</span><h2 id="checks-title">What’s been checked</h2></div>
+        <ul class="checks">
+          <li><span>JVM regression suite</span><span class="check-state"><svg class="icon"><use href="#check"/></svg>169 passed</span></li>
+          <li><span>Debug APK build</span><span class="check-state"><svg class="icon"><use href="#check"/></svg>Passed</span></li>
+          <li><span>Android lint</span><span class="check-state"><svg class="icon"><use href="#check"/></svg>Passed</span></li>
+          <li><span>Android instrumentation test sources</span><span class="check-state"><svg class="icon"><use href="#check"/></svg>Compiled</span></li>
+          <li><span>Instrumentation tests on a device</span><span class="check-state pending"><svg class="icon"><use href="#clock"/></svg>Not run</span></li>
+          <li><span>Actual phone / DHU / car display</span><span class="check-state pending"><svg class="icon"><use href="#clock"/></svg>Pending</span></li>
+        </ul>
+        <details><summary>What the regression tests cover</summary><p>Duration retention across repository and car-catalog refreshes and restarts; confirmed narration availability; lists larger than the metadata cache; unknown, zero, negative, and short durations; preservation of article identity and completion metadata. Browsing keeps using metadata without resolving every audio source.</p><p>Build checks used an example backend URL. They establish compilation and automated behavior, rather than a live backend or car connection.</p></details>
+      </div>
+      <div>
+        <div class="section-heading"><span class="number">03 /</span><h2>Where this ticket ends</h2></div>
+        <div class="remaining"><h3>Already-known durations are delivered.</h3><p>An article needs a previously learned length to show one today. Showing duration before its first playback still needs backend summary metadata in a later ticket.</p><h3>Other feature requests remain planned.</h3><p>Magazine listened/total fractions and Android Auto listened filters are separate work. Rewind was already implemented and was not changed here.</p><p>Ticket 01, the standalone latest-build verification task, was skipped at your request.</p></div>
+        <div class="sources"><a href="../../../.scratch/article-browsing-android-auto/issues/02-show-known-article-durations.md">Ticket 02</a><a href="../../../.scratch/article-browsing-android-auto/spec.md">Full implementation plan</a><a href="../../../FEATURE_REQUESTS.md">Feature requests</a></div>
+      </div>
+    </section>
+    <noscript><p>The default after-state mockups are visible above. Enable JavaScript to compare before/after behavior and change the sample duration.</p></noscript>
+  </main>
+  <footer class="shell"><span>New Yorker Audio · Ticket 02 review</span><span>Self-contained HTML · Mockup imagery, not device evidence</span></footer>
+  <script>
+    (() => {
+      const scenarios = {
+        listened: { duration:1630000, listened:true },
+        unlistened: { duration:1630000, listened:false },
+        unknown: { duration:null, listened:false },
+        short: { duration:45000, listened:false }
+      };
+      let mode = 'after';
+      const scenario = document.getElementById('scenario');
+      const minuteLabel = duration => duration > 0 ? `${Math.max(1, Math.floor(duration / 60000))} min` : null;
+      const render = () => {
+        const state = scenarios[scenario.value];
+        const isAfter = mode === 'after';
+        const duration = isAfter ? minuteLabel(state.duration) : null;
+        document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === mode)));
+        document.querySelectorAll('.mode-label').forEach(label => { label.textContent = `${isAfter ? 'After' : 'Before'} · mockup`; });
+        document.getElementById('phone-listened').hidden = !state.listened;
+        document.getElementById('car-listened').style.visibility = state.listened ? 'visible' : 'hidden';
+        const phoneDuration = document.getElementById('phone-duration');
+        phoneDuration.textContent = duration ? `${duration} · Narrated` : 'Narrated';
+        phoneDuration.classList.toggle('duration-highlight', Boolean(duration));
+        document.getElementById('phone-second-duration').textContent = isAfter ? '8 min · Narrated' : 'Narrated';
+        document.getElementById('car-second-duration').textContent = isAfter ? '8 min · ' : '';
+        const subtitle = document.getElementById('car-primary-subtitle');
+        subtitle.replaceChildren();
+        if (state.listened) subtitle.append(document.createTextNode('Listened · '));
+        if (duration) {
+          const label = document.createElement('span');
+          label.className = 'duration-highlight';
+          label.textContent = `${duration} · `;
+          subtitle.append(label);
+        }
+        subtitle.append(document.createTextNode('A late-night walk through a changing city.'));
+        let note = 'After refresh, the phone keeps its known 27-minute label. Android Auto now includes that length in the article subtitle.';
+        let title = 'The useful detail comes first.';
+        let text = '“Listened · 27 min” precedes the description, so the length is available even when the car truncates a long subtitle. The third article has no known duration, so no number is invented.';
+        if (!isAfter) {
+          note = 'Before this ticket, refreshing the list could drop the phone’s learned duration. Car issue rows did not include duration in their subtitles.';
+          title = 'The missing information.';
+          text = 'The phone already had a duration label, but fresh summaries could lose its value. Android Auto received the article description and listened status, without the known duration.';
+        } else if (scenario.value === 'unknown') {
+          note = 'No known duration means no minute label. Narration can still be available; the app simply does not know its length.';
+          title = 'Unknown stays unknown.';
+          text = 'Neither view invents a length or displays “0 min.” Backend metadata for durations before first playback is separate future work.';
+        } else if (scenario.value === 'short') {
+          note = 'This illustrative 45-second narration displays as “1 min,” matching the phone’s existing minimum-one-minute formatting.';
+          title = 'The same formatting in both views.';
+          text = 'Positive durations use whole minutes, with a minimum of one minute. A short recording therefore shows “1 min” rather than “0 min.”';
+        } else if (scenario.value === 'unlistened') {
+          note = 'An unlistened article shows its known length without a Listened prefix. The description follows the duration in Android Auto.';
+          text = '“27 min” comes before the description. Listening status and duration stay independent: a duration label does not mark an article as completed.';
+        }
+        document.getElementById('comparison-note').textContent = note;
+        document.getElementById('annotation-title').textContent = title;
+        document.getElementById('annotation-text').textContent = text;
+      };
+      document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => { mode = button.dataset.mode; render(); }));
+      scenario.addEventListener('change', render);
+      render();
+    })();
+  </script>
+</body>
+</html>

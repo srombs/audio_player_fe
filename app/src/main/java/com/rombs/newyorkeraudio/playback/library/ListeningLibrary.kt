@@ -40,7 +40,9 @@ internal class ListeningLibrary(private val catalog: CatalogLibrary, private val
     suspend fun continueNodes(): List<LibraryNode> = unfinishedArticles().map { article ->
         val entry = progress.unfinished().first { it.articleId == article.id }
         LibraryNode(article.id, article.title, article.author, article.imageUrl, playable = true, browsable = false,
-            positionMs = entry.positionMs, durationMs = entry.durationMs, description = article.description)
+            positionMs = entry.positionMs,
+            durationMs = entry.durationMs.takeIf { it > 0 } ?: article.audio?.durationMs?.takeIf { it > 0 },
+            description = article.description)
     }
 
     suspend fun search(query: String): List<Article> {

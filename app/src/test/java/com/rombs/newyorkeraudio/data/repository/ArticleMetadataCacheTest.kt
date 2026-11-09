@@ -59,4 +59,17 @@ class ArticleMetadataCacheTest {
         cache.putAll(listOf(article.copy(audio = null, audioAvailable = false)))
         assertNull(cache.get(article.id)!!.audio)
     }
+
+    @Test fun `unknown hints retain confirmed absence and explicit narration can replace it`() {
+        val storage = Storage()
+        val cache = ArticleMetadataCache(storage)
+        cache.putAll(listOf(article.copy(audio = null, audioAvailable = false)))
+        cache.putAll(listOf(article.copy(audio = null, audioAvailable = null)))
+        val restored = ArticleMetadataCache(storage)
+        assertEquals(false, restored.get(article.id)!!.audioAvailable)
+        assertNull(restored.get(article.id)!!.audio)
+        restored.putAll(listOf(article))
+        assertEquals(true, restored.get(article.id)!!.audioAvailable)
+        assertEquals(article.audio!!.durationMs, restored.get(article.id)!!.audio!!.durationMs)
+    }
 }

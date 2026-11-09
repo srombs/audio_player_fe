@@ -182,6 +182,45 @@ class CatalogLibraryTest {
         assertEquals(1, catalog.children(LIBRARY_ISSUES_ID, 0, 100).size)
     }
 
+    @Test(timeout = 5000) fun `article duration and fresh descriptions survive hinted refresh and restart`() = exercise { scope ->
+        for (availability in listOf(true, null)) {
+            var now = 1000L
+            val repository = Repository()
+            val storage = Storage()
+            val catalog = CatalogLibrary(repository, scope, storage) { now }
+            val initial = catalog.children(issueMediaId(date), 0, 100).single()
+            assertEquals(article.audio!!.durationMs, initial.durationMs)
+            now += 300_001
+            repository.articleList = listOf(article.copy(title = "Updated title", description = "Updated description",
+                audioAvailable = availability, audio = com.rombs.newyorkeraudio.domain.model.AudioInfo(null, null)))
+            val event = scope.async(start = CoroutineStart.UNDISPATCHED) { catalog.changes.first() }
+            catalog.children(issueMediaId(date), 0, 100)
+            withTimeout(2000) { event.await() }
+            val updated = catalog.children(issueMediaId(date), 0, 100).single()
+            assertEquals("Updated title", updated.title)
+            assertEquals("27 min · Updated description", updated.displayDescription)
+            assertEquals("Listened · 27 min · Updated description", updated.copy(completed = true).displayDescription)
+            assertEquals(article.audio!!.durationMs, catalog.item(article.id).durationMs)
+            assertNull(catalog.cachedArticle(article.id)!!.audio!!.audioUrl)
+            val restored = CatalogLibrary(repository, scope, storage) { now }
+            assertEquals(updated, restored.children(issueMediaId(date), 0, 100).single())
+            assertEquals(2, repository.articleCalls)
+        }
+    }
+
+    @Test(timeout = 5000) fun `browse rows omit unknown durations and display short audio as one minute`() = exercise { scope ->
+        val repository = Repository().apply {
+            articleList = listOf(null, 0L, -1L, 1_000L).mapIndexed { index, duration ->
+                article.copy(id = article.id + "-$index", description = null,
+                    audio = article.audio!!.copy(durationMs = duration))
+            }
+        }
+        val nodes = CatalogLibrary(repository, scope, Storage()).children(issueMediaId(date), 0, 100)
+        assertEquals(listOf(null, null, null, "1 min"), nodes.map { it.displayDescription })
+        assertEquals(listOf("Listened", "Listened", "Listened", "Listened · 1 min"),
+            nodes.map { it.copy(completed = true).displayDescription })
+    }
+
     private fun exercise(block: suspend (CoroutineScope) -> Unit) = runBlocking {
         val scope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
         try { block(scope) } finally { scope.cancel() }

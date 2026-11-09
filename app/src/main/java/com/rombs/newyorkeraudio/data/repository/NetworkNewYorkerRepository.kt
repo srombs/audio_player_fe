@@ -42,12 +42,11 @@ class NetworkNewYorkerRepository(private val api: BackendApi, metadataStorage: A
         if (response.issue.issueDate != magazineId) throw BackendFailure(BackendFailureKind.INVALID_RESPONSE)
         val magazine = response.issue.toMagazine()
         val articles = response.articles.map { it.toArticle() }.distinctBy { it.id }
-        mutex.withLock {
+        return mutex.withLock {
             currentCoroutineContext().ensureActive()
             magazines[magazine.id] = magazine
             summaries.putAll(articles)
         }
-        return articles
     }
 
     /** URL-based IDs allow a restored player to resolve audio even with an empty summary cache. */
