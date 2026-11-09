@@ -299,7 +299,7 @@ class PlaybackService : MediaLibraryService() {
                 val items = libraryPage(articles, page, pageSize).map { article ->
                     artwork.prefetch(article.imageUrl)
                     LibraryNode(article.id, article.title, article.author, article.imageUrl, playable = true, browsable = false,
-                        description = article.description)
+                        durationMs = article.audio?.durationMs?.takeIf { it > 0 }, description = article.description)
                         .withCompletion().toLibraryMediaItem(artwork)
                 }
                 LibraryResult.ofItemList(items, params)
@@ -513,7 +513,8 @@ class PlaybackService : MediaLibraryService() {
     private fun LibraryNode.withCompletion() = copy(completed = !browsable && historyCache.isListened(id))
 
     private fun com.rombs.newyorkeraudio.domain.model.Article.toRecentNode() =
-        LibraryNode(id, title, author, imageUrl, playable = audioAvailable != false, browsable = false, description = description)
+        LibraryNode(id, title, author, imageUrl, playable = audioAvailable != false, browsable = false,
+            durationMs = audio?.durationMs?.takeIf { it > 0 }, description = description)
 
     private fun recentNodes(): List<LibraryNode> =
         lastPlayed.current?.article?.takeIf { it.audioAvailable != false }?.let { listOf(it.toRecentNode()) } ?: emptyList()

@@ -58,6 +58,8 @@ class ListeningLibraryTest {
         val library = ListeningLibrary(CatalogLibrary(repository, scope, Catalog()), repository, restored) { null }
         assertEquals(listOf(first.id, second.id), library.continueNodes().map { it.id })
         assertEquals(200L, library.continueNodes().first().positionMs)
+        assertEquals(500L, library.continueNodes().first().durationMs)
+        assertEquals("1 min", library.continueNodes().first().displayDescription)
         assertEquals(1.5f, restored.resumeSpeed(first.id))
         assertEquals(0, repository.metadataCalls)
         restored.save(first.id, 500, 500, completed = true)

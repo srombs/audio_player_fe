@@ -1,7 +1,7 @@
 # Android Auto foundation test guide
 
 Steps 1–12 and step 13's lifecycle fixes/automated coverage are implemented.
-Main and instrumentation sources compile, all 158 JVM
+Main and instrumentation sources compile, all 169 JVM
 tests pass, the debug APK builds, and Android lint passes. The user confirmed DHU
 connection, issue browsing, and audio playback. Steps 7–13 need device regression
 validation; step 13's live lifecycle checks remain pending.
@@ -35,6 +35,10 @@ Regression coverage includes saved seek-bar progress after refreshing an issue,
 preserving newer durations and confirmed narration absence, and persisting the
 global listened filter across app restarts. Navigation device tests check filter
 selection across different issues and restored navigation state.
+Duration regression tests cover merged repository responses, oversized issue
+responses, car catalog refresh/restart, and duration labels on browse nodes.
+Mapper instrumentation cases cover duration prefixes before long descriptions,
+unknown/nonpositive durations, and preservation of article identity/metadata.
 
 With a phone or emulator connected, run the new device smoke tests:
 
@@ -89,7 +93,7 @@ for developer-mode and connection details.
 | Connection | The car connects while the phone activity is closed. |
 | Root | Issues and Continue Listening appear promptly; connecting does not start audio. |
 | Issue grid | Issues requests a grid of magazine covers, newest first; titles and covers load. The host controls columns and tile size. Verify this layout hint in DHU. |
-| Articles | Selected issue shows article titles/descriptions and thumbnails. Known unnarrated articles are excluded. Android Auto controls description truncation. |
+| Articles | Selected issue shows article titles/descriptions and thumbnails. Known duration precedes descriptions; completed rows start with Listened, followed by known duration. Unknown durations are omitted. Known unnarrated articles are excluded. Android Auto controls description truncation. |
 | Selection | Choosing a narrated article resolves its ID and starts playback. |
 | Metadata | Now Playing shows the selected title, author, and local artwork. |
 | Controls | Play/Pause and seeking work through the shared session. |

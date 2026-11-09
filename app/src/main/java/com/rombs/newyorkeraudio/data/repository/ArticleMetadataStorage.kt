@@ -11,6 +11,15 @@ interface ArticleMetadataStorage {
     fun write(value: String)
 }
 
+/** Catalog hints can omit learned narration facts; cached metadata never retains a source URL. */
+internal fun Article.mergeCachedNarration(previous: Article?): Article {
+    val available = audioAvailable ?: previous?.audioAvailable
+    val duration = audio?.durationMs?.takeIf { it > 0 }
+        ?: previous?.audio?.durationMs?.takeIf { it > 0 }
+    return copy(audioAvailable = available,
+        audio = if (available == false) null else AudioInfo(duration, null))
+}
+
 /** Retains phone route metadata across process death without retaining signed audio URLs. */
 internal class ArticleMetadataCache(private val storage: ArticleMetadataStorage?, private val maxEntries: Int = 200) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -35,20 +44,16 @@ internal class ArticleMetadataCache(private val storage: ArticleMetadataStorage?
 
     fun get(id: String): Article? = entries[id]
 
-    fun putAll(articles: List<Article>) {
-        articles.forEach { article ->
+    fun putAll(articles: List<Article>): List<Article> {
+        val merged = articles.map { article ->
             val previous = entries.remove(article.id)
-            // A catalog refresh supplies narration hints without duration. Keep the
-            // resolved duration so a returning player can display saved seek progress.
-            entries[article.id] = article.copy(audio = article.audio?.copy(
-                durationMs = article.audio.durationMs ?: previous?.audio?.durationMs,
-                audioUrl = null,
-            ))
+            article.mergeCachedNarration(previous).also { entries[article.id] = it }
         }
         while (entries.size > maxEntries) entries.remove(entries.keys.first())
         storage?.write(json.encodeToString(MetadataSnapshot(articles = entries.values.map {
             CachedArticle(it.id, it.title, it.author, it.imageUrl, it.section, it.audioAvailable, it.audio?.durationMs, it.description)
         })))
+        return merged
     }
 }
 

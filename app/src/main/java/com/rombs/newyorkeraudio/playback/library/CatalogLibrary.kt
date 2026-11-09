@@ -2,6 +2,7 @@ package com.rombs.newyorkeraudio.playback.library
 
 import com.rombs.newyorkeraudio.data.repository.NewYorkerRepository
 import com.rombs.newyorkeraudio.data.repository.canonicalArticleUrl
+import com.rombs.newyorkeraudio.data.repository.mergeCachedNarration
 import com.rombs.newyorkeraudio.domain.model.Article
 import com.rombs.newyorkeraudio.domain.model.Magazine
 import kotlinx.coroutines.CancellationException
@@ -42,14 +43,21 @@ private fun validIssueDate(date: String): String {
 data class LibraryNode(val id: String, val title: String, val author: String? = null,
     val artworkUrl: String? = null, val playable: Boolean = false, val browsable: Boolean = !playable,
     val positionMs: Long? = null, val durationMs: Long? = null, val description: String? = null,
-    val completed: Boolean = false)
+    val completed: Boolean = false) {
+    val displayDescription: String?
+        get() = listOfNotNull(
+            if (completed) "Listened" else null,
+            durationMs?.takeIf { it > 0 && !browsable }?.let { "${(it / 60_000).coerceAtLeast(1)} min" },
+            description?.takeIf { it.isNotBlank() },
+        ).joinToString(" · ").takeIf { it.isNotEmpty() }
+}
 
 fun libraryRoot() = LibraryNode(LIBRARY_ROOT_ID, "New Yorker Audio")
 fun issuesFolder() = LibraryNode(LIBRARY_ISSUES_ID, "Issues")
 fun continueFolder() = LibraryNode(LIBRARY_CONTINUE_ID, "Continue Listening")
 private fun Magazine.toNode() = LibraryNode(issueMediaId(id), title, artworkUrl = coverImageUrl)
 private fun Article.toNode() = LibraryNode(id, title, author, imageUrl, audioAvailable != false, browsable = false,
-    description = description)
+    durationMs = audio?.durationMs?.takeIf { it > 0 }, description = description)
 
 /** Legacy browsers use MAX_VALUE for unpaged reads. Bound the reply and avoid integer overflow. */
 internal fun <T> libraryPage(items: List<T>, page: Int, pageSize: Int): List<T> {
@@ -177,15 +185,7 @@ class CatalogLibrary(
                             .map { it.copy(audio = it.audio?.copy(audioUrl = null)) }
                         mutex.withLock {
                             val previous = snapshot.issueArticles.firstOrNull { it.date == date }?.articles?.associateBy { it.id }.orEmpty()
-                            // A summary without narration information must not erase a resolver's
-                            // confirmed answer. An explicit positive/negative summary can replace it.
-                            val merged = result.map { summary ->
-                                val known = previous[summary.id]
-                                if (summary.audioAvailable == null && known?.audioAvailable != null) {
-                                    summary.copy(audioAvailable = known.audioAvailable,
-                                        audio = if (known.audioAvailable == false) null else known.audio?.copy(audioUrl = null))
-                                } else summary
-                            }
+                            val merged = result.map { it.mergeCachedNarration(previous[it.id]) }
                             val entries = snapshot.issueArticles.filterNot { it.date == date } + CachedIssueArticles(date, clock(), merged)
                             snapshot = snapshot.copy(issueArticles = entries.takeLast(MAX_CACHED_ISSUES))
                             persist()

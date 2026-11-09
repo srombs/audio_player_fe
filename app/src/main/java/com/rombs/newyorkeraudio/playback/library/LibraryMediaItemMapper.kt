@@ -10,9 +10,6 @@ import com.rombs.newyorkeraudio.playback.artwork.ArtworkCache
 
 @OptIn(UnstableApi::class)
 fun LibraryNode.toLibraryMediaItem(artwork: ArtworkCache): MediaItem {
-    val displayDescription = if (completed) {
-        description?.takeIf { it.isNotBlank() }?.let { "Listened · $it" } ?: "Listened"
-    } else description
     return MediaItem.Builder().setMediaId(id)
     .setMediaMetadata(MediaMetadata.Builder().setTitle(title.take(256)).setArtist(author?.take(256))
         .setDisplayTitle(title.take(256)).setSubtitle(displayDescription?.take(512)).setDescription(displayDescription?.take(512))
