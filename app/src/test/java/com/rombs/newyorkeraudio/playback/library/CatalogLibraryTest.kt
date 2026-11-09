@@ -417,6 +417,57 @@ class CatalogLibraryTest {
         collector.cancel()
     }
 
+    @Test(timeout = 10000) fun `browse narration changes update shared issues even after detail eviction`() = exercise { scope ->
+        var now = 1000L
+        val repository = Repository().apply {
+            issueList = (0L..24L).map { offset ->
+                val day = java.time.LocalDate.parse(date).minusDays(offset).toString()
+                issue.copy(id = day, date = day)
+            }
+        }
+        val catalog = CatalogLibrary(repository, scope, Storage(), initialListenedIds = setOf(article.id)) { now }
+        catalog.children(LIBRARY_ISSUES_ID, 0, 1)
+        for (heading in repository.issueList) catalog.children(issueMediaId(heading.id), 0, 100)
+        assertEquals("1/1 listened", catalog.item(issueMediaId(date)).displayDescription)
+        now += 300_001
+        repository.articleList = listOf(article.copy(audio = null, audioAvailable = false))
+        val refreshedDate = repository.issueList.last().id
+        val events = mutableListOf<CatalogChange>()
+        val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { catalog.changes.collect { events.add(it) } }
+        val refreshed = scope.async(start = CoroutineStart.UNDISPATCHED) {
+            catalog.changes.first { it.parentId == issueMediaId(refreshedDate) }
+        }
+        catalog.children(issueMediaId(refreshedDate), 0, 100)
+        withTimeout(2000) { refreshed.await() }
+        assertEquals("0/0 listened", catalog.item(issueMediaId(date)).displayDescription)
+        assertEquals("0/0 listened", catalog.item(issueMediaId(refreshedDate)).displayDescription)
+        assertTrue(catalog.children(issueMediaId(repository.issueList[1].id), 0, 100).isEmpty())
+        withTimeout(2000) { while (events.map { it.parentId }.toSet().size < 26) yield() }
+        assertTrue(events.filter { it.parentId != LIBRARY_ISSUES_ID }.all { it.count == 0 })
+        collector.cancel()
+    }
+
+    @Test(timeout = 5000) fun `completion still notifies cached article parents when legacy membership cannot rebuild offline`() = exercise { scope ->
+        val repository = Repository()
+        val storage = Storage()
+        val catalog = CatalogLibrary(repository, scope, storage) { 1000 }
+        catalog.children(LIBRARY_ISSUES_ID, 0, 100)
+        catalog.children(issueMediaId(date), 0, 100)
+        val saved = Json.parseToJsonElement(storage.value!!).jsonObject
+        storage.value = JsonObject((saved - "issueMembership") + ("version" to JsonPrimitive(1))).toString()
+        repository.failure = IllegalStateException("Offline")
+        val restored = CatalogLibrary(repository, scope, storage) { 2000 }
+        val events = mutableListOf<CatalogChange>()
+        val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { restored.changes.collect { events.add(it) } }
+        restored.listeningHistoryChanged(setOf(article.id))
+        yield()
+        assertEquals(setOf(issueMediaId(date), LIBRARY_ISSUES_ID), events.map { it.parentId }.toSet())
+        assertEquals(1, events.single { it.parentId == issueMediaId(date) }.count)
+        assertEquals("Progress unavailable", restored.item(issueMediaId(date)).displayDescription)
+        assertEquals(article.id, restored.children(issueMediaId(date), 0, 100).single().id)
+        collector.cancel()
+    }
+
     private fun exercise(block: suspend (CoroutineScope) -> Unit) = runBlocking {
         val scope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
         try { block(scope) } finally { scope.cancel() }

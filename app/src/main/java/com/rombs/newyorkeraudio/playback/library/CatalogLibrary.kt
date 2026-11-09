@@ -252,22 +252,25 @@ class CatalogLibrary(
                         val result = repository.getArticles(date).distinctBy { it.id }
                             .map { it.copy(audio = it.audio?.copy(audioUrl = null)) }
                         mutex.withLock {
-                            val previous = snapshot.issueArticles.firstOrNull { it.date == date }?.articles?.associateBy { it.id }.orEmpty()
-                            val previousMembers = snapshot.issueMembership.firstOrNull { it.date == date }?.articles.orEmpty()
+                            val previous = snapshot.issueArticles.flatMap { it.articles }.associateBy { it.id }
+                            val previousMembers = snapshot.issueMembership.flatMap { it.articles.entries }
+                                .filter { it.value != null }.associate { it.key to it.value }
                             val merged = result.map { incoming ->
                                 val cached = previous[incoming.id] ?: incoming.copy(audio = null, audioAvailable = previousMembers[incoming.id])
                                 val metadata = incoming.mergeCachedNarration(cached)
                                 val newer = inFlightNarration[incoming.id]?.takeIf { it.first > startedAtRevision }?.second
                                 if (newer == null) metadata else metadata.copy(audio = newer.audio, audioAvailable = newer.audioAvailable)
                             }
+                            val affected = updateNarration(merged.associateBy { it.id }) - date
                             val entries = snapshot.issueArticles.filterNot { it.date == date } +
                                 CachedIssueArticles(date, clock(), merged.take(MAX_ARTICLES_PER_ISSUE))
                             val membership = CachedIssueMembership(date, clock(), merged.associate { it.id to it.audioAvailable })
                             snapshot = snapshot.copy(issueArticles = entries.takeLast(MAX_CACHED_ISSUES),
                                 issueMembership = retainMembership(snapshot.issueMembership.filterNot { it.date == date } + membership, snapshot.issues))
                             persist()
-                            listOf(CatalogChange(key, merged.take(MAX_ARTICLES_PER_ISSUE).count { it.audioAvailable != false }),
-                                CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0))
+                            listOf(CatalogChange(key, merged.take(MAX_ARTICLES_PER_ISSUE).count { it.audioAvailable != false })) +
+                                affected.map { CatalogChange(issueMediaId(it), browseCount(it)) } +
+                                CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0)
                         }
                     }
                     // Consumers may read the catalog while processing a notification.
@@ -309,9 +312,10 @@ class CatalogLibrary(
         val changes = mutex.withLock {
             val changed = (listenedIds - ids) + (ids - listenedIds)
             listenedIds = ids.toSet()
-            val affected = snapshot.issueMembership.filter { entry -> entry.articles.keys.any { it in changed } }
-            if (affected.isEmpty()) emptyList() else affected.map { entry ->
-                CatalogChange(issueMediaId(entry.date), browseCount(entry.date))
+            val affected = snapshot.issueMembership.filter { entry -> entry.articles.keys.any { it in changed } }.map { it.date }.toSet() +
+                snapshot.issueArticles.filter { entry -> entry.articles.any { it.id in changed } }.map { it.date }
+            if (affected.isEmpty()) emptyList() else affected.map { date ->
+                CatalogChange(issueMediaId(date), browseCount(date))
             } + CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0)
         }
         changes.forEach { mutableChanges.emit(it) }
@@ -320,6 +324,31 @@ class CatalogLibrary(
     private fun browseCount(date: String): Int = snapshot.issueMembership.firstOrNull { it.date == date }
         ?.articles?.values?.take(MAX_ARTICLES_PER_ISSUE)?.count { it != false }
         ?: snapshot.issueArticles.firstOrNull { it.date == date }?.articles?.count { it.audioAvailable != false } ?: 0
+
+    /** Narration belongs to a canonical article, including when its issue details have been evicted. */
+    private fun updateNarration(updates: Map<String, Article>): Set<String> {
+        val affected = mutableSetOf<String>()
+        snapshot = snapshot.copy(
+            issueArticles = snapshot.issueArticles.map { entry ->
+                entry.copy(articles = entry.articles.map { article ->
+                    val narration = updates[article.id]
+                    if (narration == null) article else {
+                        val updated = article.copy(audio = narration.audio, audioAvailable = narration.audioAvailable)
+                        if (updated != article) affected.add(entry.date)
+                        updated
+                    }
+                })
+            },
+            issueMembership = snapshot.issueMembership.map { entry ->
+                entry.copy(articles = entry.articles.mapValues { (id, availability) ->
+                    val updated = updates[id]?.audioAvailable ?: availability
+                    if (updated != availability) affected.add(entry.date)
+                    updated
+                })
+            },
+        )
+        return affected
+    }
 
     private fun retainMembership(entries: List<CachedIssueMembership>, issues: List<Magazine>?): List<CachedIssueMembership> {
         val headings = issues?.map { it.id }?.toSet()
