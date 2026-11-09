@@ -45,7 +45,9 @@ See the configuration instructions below.
 
 Open an issue, select an article, and press Play to check narration and start audio. Opening an article never autoplays. Unknown narration
 hints remain selectable; an `audio: null` response retains article
-metadata and shows the narration-unavailable message.
+metadata, shows the narration-unavailable message, and disables play, seek, skips,
+and speed controls. Known unavailable narration shows this immediately without
+an audio-resolution request; a newly confirmed absence updates the open player.
 
 The backend owns the subscriber session; the Android app needs no New Yorker
 cookies or login. Browsing and resolving audio require network access and the
@@ -80,7 +82,8 @@ service checks playback events and its five-second progress timer.
 
 Android Auto receives fully-played indicators in issue lists, Continue Listening,
 search results, and recent items from the same local store. Its host controls
-indicator presentation. Phone filters are local to each saved article-list screen.
+indicator presentation. The phone's All / Unlistened / Listened choice is shared
+across all issues and persisted locally across app restarts.
 Car browse descriptions also start with “Listened ·” for completed articles, or
 show “Listened” when no description exists. Phone descriptions keep their original
 text alongside the separate Listened label.
@@ -109,6 +112,10 @@ a saved position. Completed narrations, or saved positions beyond a newly shorte
 recording, start from the beginning. An abrupt process kill can lose the most recent
 few seconds; clearing app data removes the cache. Playback speed is preserved for
 an active session but is not persisted across restarts.
+
+Refreshing an issue retains previously resolved narration durations in the metadata
+cache. Returning to a saved article therefore displays both its elapsed time and
+the matching seek-bar position before playback resumes, without resolving audio.
 
 ## Android Auto foundation: steps 1–6
 

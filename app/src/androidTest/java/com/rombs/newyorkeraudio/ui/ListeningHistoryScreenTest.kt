@@ -30,12 +30,15 @@ class ListeningHistoryScreenTest {
 
     @Test fun activeUnlistenedFilterUpdatesWhenPlaybackCompletesWithoutRefreshingTheIssue() {
         val history = ListeningHistoryCache(Storage())
+        val filters = ArticleFilterPreferences()
         var selected: String? = null
         compose.setContent {
             val entries by history.entries.collectAsState()
+            val filter by filters.filter.collectAsState()
             NewYorkerAudioTheme {
                 ArticleListScreen(LoadState.Content(ArticleListContent(Magazine("2026-10-12", "Issue", null, null), listOf(article))),
-                    {}, {}, { selected = it }, listenedIds = entries.map { it.article.id }.toSet())
+                    {}, {}, { selected = it }, listenedIds = entries.map { it.article.id }.toSet(),
+                    filter = filter, onFilterChange = filters::select)
             }
         }
         compose.onNodeWithTag("filter:UNLISTENED").performClick()

@@ -28,6 +28,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.unit.dp
 import com.rombs.newyorkeraudio.R
 import com.rombs.newyorkeraudio.domain.model.Article
@@ -52,22 +54,29 @@ fun PlayerControls(
     savedPositionMs: Long = 0,
 ) {
     val current = playback.forArticle(article, savedPositionMs)
+    val noNarration = article.hasNoNarration(playback)
     val hasSource = !current.article?.audio?.audioUrl.isNullOrBlank() || !article.audio?.audioUrl.isNullOrBlank()
-    val canPlay = article.audioAvailable != false && (hasSource || article.articleUrl != null)
-    val canSeek = hasSource && current.isConnected && current.canSeek && current.durationMs > 0 && current.error == null
-    val pause = current.playWhenReady && current.error == null
-    var dragging by remember(article.id) { mutableStateOf<Float?>(null) }
-    var speedMenu by remember(article.id) { mutableStateOf(false) }
-    val fraction = dragging ?: if (current.durationMs > 0) (current.positionMs.toFloat() / current.durationMs).coerceIn(0f, 1f) else 0f
-    val elapsed = dragging?.let { (it * current.durationMs).toLong() } ?: current.positionMs
+    val canPlay = !noNarration && (hasSource || article.articleUrl != null)
+    val canSeek = !noNarration && hasSource && current.isConnected && current.canSeek && current.durationMs > 0 && current.error == null
+    val canChangeSpeed = !noNarration && hasSource && current.isConnected && current.mediaId == article.id && current.error == null
+    val pause = !noNarration && current.playWhenReady && current.error == null
+    var dragging by remember(article.id, noNarration) { mutableStateOf<Float?>(null) }
+    var speedMenu by remember(article.id, noNarration) { mutableStateOf(false) }
+    val duration = if (noNarration) 0 else current.durationMs
+    val fraction = if (noNarration) 0f else dragging ?: if (duration > 0) (current.positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    val elapsed = if (noNarration) 0 else dragging?.let { (it * duration).toLong() } ?: current.positionMs
     val progressLabel = stringResource(R.string.playback_progress)
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().testTag("player-controls")) {
+        if (noNarration) {
+            Text(stringResource(R.string.no_narration), style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag("no-narration").semantics { liveRegion = LiveRegionMode.Polite })
+        }
         Slider(
             value = fraction,
             onValueChange = { dragging = it },
             onValueChangeFinished = {
-                dragging?.let { onSeek(clampPosition((it * current.durationMs).toLong(), current.durationMs)) }
+                if (canSeek) dragging?.let { onSeek(clampPosition((it * duration).toLong(), duration)) }
                 dragging = null
             },
             enabled = canSeek,
@@ -75,7 +84,7 @@ fun PlayerControls(
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatPlaybackTime(elapsed), modifier = Modifier.testTag("elapsed"), style = MaterialTheme.typography.bodyMedium)
-            Text(formatPlaybackTime(current.durationMs), modifier = Modifier.testTag("duration"), style = MaterialTheme.typography.bodyMedium)
+            Text(formatPlaybackTime(duration), modifier = Modifier.testTag("duration"), style = MaterialTheme.typography.bodyMedium)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -109,19 +118,20 @@ fun PlayerControls(
         Box(Modifier.align(Alignment.CenterHorizontally)) {
             TextButton(
                 onClick = { speedMenu = true },
-                enabled = hasSource && current.isConnected && current.mediaId == article.id && current.error == null,
+                enabled = canChangeSpeed,
                 modifier = Modifier.testTag("speed"),
             ) { Text(stringResource(R.string.playback_speed, current.speed.toString())) }
-            DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+            DropdownMenu(expanded = speedMenu && canChangeSpeed, onDismissRequest = { speedMenu = false }) {
                 PLAYBACK_SPEEDS.forEach { speed ->
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.playback_speed, speed.toString())) },
-                        onClick = { speedMenu = false; onSpeed(speed) },
+                        onClick = { speedMenu = false; if (canChangeSpeed) onSpeed(speed) },
                     )
                 }
             }
         }
         when {
+            noNarration -> Unit // The availability message is above the disabled controls.
             current.error != null -> Column {
                 Text(stringResource(current.resolutionFailure?.messageResource() ?: when (current.error) {
                     PlaybackFailure.CONNECTION -> R.string.player_connection_error

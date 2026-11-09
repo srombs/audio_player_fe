@@ -4,7 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -14,6 +16,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rombs.newyorkeraudio.data.repository.TestNarration
+import com.rombs.newyorkeraudio.data.repository.ArticleMetadataCache
+import com.rombs.newyorkeraudio.domain.model.AudioInfo
 import com.rombs.newyorkeraudio.ui.player.PlayerControls
 import com.rombs.newyorkeraudio.ui.theme.NewYorkerAudioTheme
 import org.junit.Assert.assertEquals
@@ -104,5 +108,63 @@ class PlayerControlsTest {
         }
         compose.onNodeWithTag("elapsed").assertTextEquals("2:00")
         compose.onNodeWithTag("seek").assertIsNotEnabled()
+    }
+
+    @Test fun returningAfterCatalogRefreshDisplaysSavedElapsedTimeAndSliderPosition() {
+        val metadata = ArticleMetadataCache(null)
+        metadata.putAll(listOf(article))
+        var showingPlayer by mutableStateOf(true)
+        compose.setContent {
+            NewYorkerAudioTheme {
+                if (showingPlayer) PlayerControls(metadata.get(article.id)!!, PlaybackState(), {}, {}, {}, {}, {},
+                    savedPositionMs = 120_000)
+            }
+        }
+        compose.runOnIdle { showingPlayer = false }
+        compose.waitForIdle()
+        metadata.putAll(listOf(article.copy(audio = AudioInfo(null, null))))
+        compose.runOnIdle { showingPlayer = true }
+        compose.onNodeWithTag("elapsed").assertTextEquals("2:00")
+        compose.onNodeWithTag("duration").assertTextEquals("27:10")
+        val progress = compose.onNodeWithTag("seek").fetchSemanticsNode()
+            .config[SemanticsProperties.ProgressBarRangeInfo].current
+        assertEquals(120_000f / 1_630_000f, progress, 0.0001f)
+    }
+
+    @Test fun knownNarrationAbsenceDisablesEveryControlDespiteStaleSourceMetadata() {
+        compose.setContent {
+            NewYorkerAudioTheme {
+                PlayerControls(article.copy(audioAvailable = false), active, {}, {}, {}, {}, {})
+            }
+        }
+        compose.onNodeWithText("No narration is available for this article.").assertExists()
+        for (tag in listOf("seek", "play-pause", "skip-back", "skip-forward", "speed")) {
+            compose.onNodeWithTag(tag).assertIsNotEnabled()
+        }
+        compose.onNodeWithTag("retry-audio").assertDoesNotExist()
+    }
+
+    @Test fun unknownNarrationKeepsPlayAvailableToCheckForAudio() {
+        val unknown = article.copy(audioAvailable = null, audio = AudioInfo(null, null))
+        compose.setContent {
+            NewYorkerAudioTheme { PlayerControls(unknown, PlaybackState(), {}, {}, {}, {}, {}) }
+        }
+        compose.onNodeWithTag("play-pause").assertIsEnabled()
+        compose.onNodeWithText("No narration is available for this article.").assertDoesNotExist()
+    }
+
+    @Test fun discoveringNoNarrationDisablesControlsAndRemovesRetryWithoutReopeningScreen() {
+        var playback by mutableStateOf(active)
+        compose.setContent {
+            NewYorkerAudioTheme { PlayerControls(article, playback, {}, {}, {}, {}, {}) }
+        }
+        compose.onNodeWithTag("play-pause").assertIsEnabled()
+        compose.onNodeWithTag("seek").assertIsEnabled()
+        compose.runOnIdle { playback = active.copy(error = PlaybackFailure.NO_NARRATION) }
+        compose.onNodeWithText("No narration is available for this article.").assertExists()
+        for (tag in listOf("seek", "play-pause", "skip-back", "skip-forward", "speed")) {
+            compose.onNodeWithTag(tag).assertIsNotEnabled()
+        }
+        compose.onNodeWithTag("retry-audio").assertDoesNotExist()
     }
 }

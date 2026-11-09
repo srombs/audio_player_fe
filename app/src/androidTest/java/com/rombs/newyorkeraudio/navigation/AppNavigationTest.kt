@@ -2,6 +2,7 @@ package com.rombs.newyorkeraudio.navigation
 
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -15,6 +16,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.rombs.newyorkeraudio.data.repository.TestNarration
 import com.rombs.newyorkeraudio.data.repository.FakeNewYorkerRepository
 import com.rombs.newyorkeraudio.ui.theme.NewYorkerAudioTheme
+import com.rombs.newyorkeraudio.ui.articles.ArticleFilterPreferences
 import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -32,8 +34,9 @@ class AppNavigationTest {
     @Before fun setup() {
         restoration = StateRestorationTester(compose)
         val repository = FakeNewYorkerRepository(TestNarration.article.copy(id = url))
+        val filters = ArticleFilterPreferences()
         restoration.setContent {
-            NewYorkerAudioTheme { AppNavigation(repository) }
+            NewYorkerAudioTheme { AppNavigation(repository, articleFilterPreferences = filters) }
         }
     }
 
@@ -92,5 +95,21 @@ class AppNavigationTest {
         compose.onNodeWithTag("player:$url").assertIsDisplayed()
         compose.onNodeWithTag("player:$url").performScrollToNode(hasText(TestNarration.article.title))
         compose.onNodeWithText(TestNarration.article.title).assertIsDisplayed()
+    }
+
+    @Test
+    fun listenedFiltersAreSharedAcrossIssuesAndSurviveNavigationRestoration() {
+        compose.onNodeWithTag("issue:2026-10-12").performClick()
+        for (filter in listOf("UNLISTENED", "LISTENED", "ALL")) {
+            compose.onNodeWithTag("filter:$filter").performClick()
+            compose.onNodeWithContentDescription("Back").performClick()
+            compose.onNodeWithTag("issue:2026-10-05").performClick()
+            compose.onNodeWithTag("filter:$filter").assertIsSelected()
+            restoration.emulateSavedInstanceStateRestore()
+            compose.onNodeWithTag("filter:$filter").assertIsSelected()
+            compose.onNodeWithContentDescription("Back").performClick()
+            compose.onNodeWithTag("issue:2026-10-12").performClick()
+            compose.onNodeWithTag("filter:$filter").assertIsSelected()
+        }
     }
 }
