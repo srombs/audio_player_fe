@@ -75,7 +75,7 @@ whose article details were evicted. Newer narration resolution wins over an
 already-running browse response. Browsing never resolves audio or stores signed
 stream URLs.
 
-Validation: all 176 JVM tests passed; main Kotlin and Android test sources
+Validation: all 178 JVM tests passed; main Kotlin and Android test sources
 compiled; debug APK assembly and Android lint passed (warnings remain in
 unchanged files). The new mapper device case compiled but was not executed.
 ADB found no connected device; phone/DHU/car presentation and connected
@@ -93,3 +93,20 @@ JavaScript errors. Desktop and mobile renders were inspected.
 
 The overview uses fictional data and browser-drawn mockups, not device captures.
 Its interactive examples illustrate behavior; they do not run the Kotlin code.
+
+## Standards
+
+No documented-standards violations or material baseline-smell findings.
+The independent standards reviewer also checked the subsequent correction commit.
+
+## Spec
+
+The first review identified two P2 gaps: browse narration changes needed to
+propagate to shared issues, and cached article parents needed completion
+notifications while legacy/corrupt membership was unavailable. Both were fixed
+in `17a7094`, with regressions that failed before the fixes and now pass.
+The independent follow-up review reported no remaining material findings and
+no unrequested scope.
+
+Review summary: Standards 0 findings; Spec 2 corrected, 0 remaining.
+The comparison baseline is ticket 02's `4978754`.

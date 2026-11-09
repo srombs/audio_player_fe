@@ -1,7 +1,7 @@
 # Android Auto foundation test guide
 
 Steps 1–12 and step 13's lifecycle fixes/automated coverage are implemented.
-Main and instrumentation sources compile, all 176 JVM
+Main and instrumentation sources compile, all 178 JVM
 tests pass, the debug APK builds, and Android lint passes. The user confirmed DHU
 connection, issue browsing, and audio playback. Steps 7–13 need device regression
 validation; step 13's live lifecycle checks remain pending.
@@ -46,6 +46,9 @@ multi-ID completion updates, replay, bounded hydration, and newer narration
 resolution winning over a late browse response. The issue mapper device case
 checks fractions in both title fields while preserving the underlying issue
 title and ID, including a long title.
+Review regressions also cover narration changes from browse metadata reaching
+all shared issues after detail eviction, and completion notifications for
+legacy cached article parents while exact membership remains unavailable offline.
 
 With a phone or emulator connected, run the new device smoke tests:
 
