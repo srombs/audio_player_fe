@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,6 +48,7 @@ fun PlayerScreen(
     CatalogScaffold(title = stringResource(R.string.player_title), onBack = onBack) { padding ->
         LoadedContent(state, onRetry, Modifier.padding(padding).consumeWindowInsets(padding),
             loadingMessage = stringResource(R.string.loading)) { article, modifier ->
+            val noNarration = article.hasNoNarration(playback)
             LazyColumn(
                 modifier = modifier.fillMaxSize().testTag("player:${article.id}"),
                 contentPadding = PaddingValues(24.dp),
@@ -77,24 +77,12 @@ fun PlayerScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        NarrationMetadata(article.audio)
+                        NarrationMetadata(if (noNarration) null else article.audio,
+                            available = if (noNarration) false else article.audioAvailable)
                     }
                 }
-                if (article.audio != null) {
-                    item(key = "controls") {
-                        PlayerControls(article, playback, onPlayPause, onSeek, onSkipBack, onSkipForward, onSpeed, onRetryAudio, savedPositionMs)
-                    }
-                }
-                if (article.audio == null) item(key = "playback-status") {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(stringResource(R.string.no_narration), style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
+                item(key = "controls") {
+                    PlayerControls(article, playback, onPlayPause, onSeek, onSkipBack, onSkipForward, onSpeed, onRetryAudio, savedPositionMs)
                 }
             }
         }

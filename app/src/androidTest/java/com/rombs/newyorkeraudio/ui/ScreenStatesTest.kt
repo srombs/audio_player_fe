@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -123,7 +124,11 @@ class ScreenStatesTest {
         compose.onNodeWithTag("player:${article.id}")
             .performScrollToNode(hasText("No narration is available for this article."))
         compose.onNodeWithText("No narration is available for this article.").assertIsDisplayed()
-        compose.onNodeWithTag("player-controls").assertDoesNotExist()
+        for (tag in listOf("seek", "play-pause", "skip-back", "skip-forward", "speed")) {
+            compose.onNodeWithTag("player:${article.id}")
+                .performScrollToNode(androidx.compose.ui.test.hasTestTag(tag))
+            compose.onNodeWithTag(tag).assertIsNotEnabled()
+        }
     }
 
     @Test fun unknownNarrationRemainsSelectableWithoutClaimingItIsNarrated() {

@@ -75,6 +75,29 @@ class PlayerCommandsTest {
         assertTrue(port.plays.isEmpty())
     }
 
+    @Test(timeout = 3000) fun confirmedNarrationAbsenceRejectsAllControlsWhileScreenMetadataIsStillNarrated() = exercise { scope ->
+        val port = FakeController(PlaybackState(mediaId = TestNarration.article.id, isConnected = true,
+            error = PlaybackFailure.NO_NARRATION))
+        val model = PlayerViewModel(repository, TestNarration.article.id, scope, port)
+        yield()
+        model.playPause()
+        model.retryAudio()
+        model.seekTo(30_000)
+        model.skipBackward()
+        model.skipForward()
+        model.setSpeed(1.5f)
+        assertEquals(0, port.plays.size + port.seeks.size + port.backwards + port.forwards + port.speeds.size)
+    }
+
+    @Test(timeout = 3000) fun anotherArticlesNarrationAbsenceDoesNotPreventPlayingTheSelectedArticle() = exercise { scope ->
+        val port = FakeController(PlaybackState(mediaId = "another", isConnected = true,
+            error = PlaybackFailure.NO_NARRATION))
+        val model = PlayerViewModel(repository, TestNarration.article.id, scope, port)
+        yield()
+        model.playPause()
+        assertEquals(listOf(TestNarration.article), port.plays)
+    }
+
     private fun exercise(block: suspend (CoroutineScope) -> Unit) = runBlocking {
         val scope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
         try { block(scope) } finally { scope.cancel() }

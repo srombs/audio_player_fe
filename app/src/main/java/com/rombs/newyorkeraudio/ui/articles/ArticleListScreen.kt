@@ -12,10 +12,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.FilterChip
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import com.rombs.newyorkeraudio.playback.ArticleListenFilter
 import com.rombs.newyorkeraudio.playback.filterListenedArticles
 import androidx.compose.material3.MaterialTheme
@@ -39,8 +35,9 @@ fun ArticleListScreen(
     onBack: () -> Unit,
     onArticleClick: (String) -> Unit,
     listenedIds: Set<String> = emptySet(),
+    filter: ArticleListenFilter = ArticleListenFilter.ALL,
+    onFilterChange: (ArticleListenFilter) -> Unit = {},
 ) {
-    var filter by rememberSaveable { mutableStateOf(ArticleListenFilter.ALL) }
     CatalogScaffold(title = stringResource(R.string.articles_title), onBack = onBack,
         onRefresh = onRetry.takeIf { state != LoadState.Loading }) { padding ->
         LoadedContent(state, onRetry, Modifier.padding(padding).consumeWindowInsets(padding)) { content, modifier ->
@@ -63,7 +60,7 @@ fun ArticleListScreen(
                         )
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ArticleListenFilter.entries.forEach { option ->
-                                FilterChip(selected = filter == option, onClick = { filter = option },
+                                FilterChip(selected = filter == option, onClick = { onFilterChange(option) },
                                     label = { Text(stringResource(when (option) {
                                         ArticleListenFilter.ALL -> R.string.all_articles
                                         ArticleListenFilter.UNLISTENED -> R.string.unlistened

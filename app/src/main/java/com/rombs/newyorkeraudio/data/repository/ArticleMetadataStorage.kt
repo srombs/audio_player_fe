@@ -37,8 +37,13 @@ internal class ArticleMetadataCache(private val storage: ArticleMetadataStorage?
 
     fun putAll(articles: List<Article>) {
         articles.forEach { article ->
-            entries.remove(article.id)
-            entries[article.id] = article.copy(audio = article.audio?.copy(audioUrl = null))
+            val previous = entries.remove(article.id)
+            // A catalog refresh supplies narration hints without duration. Keep the
+            // resolved duration so a returning player can display saved seek progress.
+            entries[article.id] = article.copy(audio = article.audio?.copy(
+                durationMs = article.audio.durationMs ?: previous?.audio?.durationMs,
+                audioUrl = null,
+            ))
         }
         while (entries.size > maxEntries) entries.remove(entries.keys.first())
         storage?.write(json.encodeToString(MetadataSnapshot(articles = entries.values.map {

@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                     container.repository,
                     playback = container.playerConnection,
                     history = container.historyCache,
+                    articleFilterPreferences = container.articleFilterPreferences,
                     openPlayerRequest = openPlayerRequest,
                     onPlayerOpened = { openPlayerRequest = 0 },
                 )

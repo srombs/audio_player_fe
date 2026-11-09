@@ -45,10 +45,11 @@ class PlayerViewModel(
     /** The service owns resolution and fresh-URL retry, including position and speed. */
     fun retryAudio() {
         val article = selectedArticle() ?: return
+        if (!canRequestPlayback(article)) return
         val current = playbackState.value
         if (current.mediaId == article.id && current.error == PlaybackFailure.STREAM) {
             controller?.retry(article)
-        } else if (canRequestPlayback(article)) {
+        } else {
             controller?.play(article)
         }
     }
@@ -78,10 +79,11 @@ class PlayerViewModel(
 
     private fun controlsCurrentArticle(): Boolean {
         val article = selectedArticle() ?: return false
-        return article.id == playbackState.value.mediaId && playbackState.value.isConnected
+        return !article.hasNoNarration(playbackState.value) &&
+            article.id == playbackState.value.mediaId && playbackState.value.isConnected
     }
 
-    private fun canRequestPlayback(article: Article): Boolean = article.audioAvailable != false &&
+    private fun canRequestPlayback(article: Article): Boolean = !article.hasNoNarration(playbackState.value) &&
         (!article.audio?.audioUrl.isNullOrBlank() || article.articleUrl != null)
 
     private fun selectedArticle(): Article? = when (val current = state.value) {

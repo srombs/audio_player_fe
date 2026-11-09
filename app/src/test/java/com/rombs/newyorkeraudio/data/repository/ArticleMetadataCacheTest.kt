@@ -50,4 +50,13 @@ class ArticleMetadataCacheTest {
             assertNull(ArticleMetadataCache(Storage(value)).get(article.id))
         }
     }
+
+    @Test fun `new resolved durations replace old ones and confirmed absence clears narration`() {
+        val cache = ArticleMetadataCache(null)
+        cache.putAll(listOf(article))
+        cache.putAll(listOf(article.copy(audio = article.audio!!.copy(durationMs = 60_000))))
+        assertEquals(60_000L, cache.get(article.id)!!.audio!!.durationMs)
+        cache.putAll(listOf(article.copy(audio = null, audioAvailable = false)))
+        assertNull(cache.get(article.id)!!.audio)
+    }
 }

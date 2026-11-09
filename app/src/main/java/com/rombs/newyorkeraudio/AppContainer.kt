@@ -11,8 +11,11 @@ import com.rombs.newyorkeraudio.playback.PreferencesProgressStorage
 import com.rombs.newyorkeraudio.playback.ListeningHistoryCache
 import com.rombs.newyorkeraudio.playback.PreferencesListeningHistoryStorage
 import com.rombs.newyorkeraudio.playback.artwork.ArtworkCache
+import com.rombs.newyorkeraudio.ui.articles.ArticleFilterPreferences
+import com.rombs.newyorkeraudio.ui.articles.PreferencesArticleFilterStorage
 
 class AppContainer(context: Context) {
+    val articleFilterPreferences = ArticleFilterPreferences(PreferencesArticleFilterStorage(context))
     val backendApi by lazy { BackendClient.create(BuildConfig.BASE_URL) }
     val historyCache = ListeningHistoryCache(PreferencesListeningHistoryStorage(context))
     val networkRepository: NewYorkerRepository by lazy { NetworkNewYorkerRepository(backendApi,

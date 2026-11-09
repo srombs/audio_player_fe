@@ -31,6 +31,10 @@ detachment, request ownership, and following car-selected player navigation.
 Completion-history tests additionally cover persistence without signed URLs,
 duplicate ended samples, replay recency, independence from unfinished progress,
 filter ordering, corrupt-store recovery, and offline metadata lookup for history.
+Regression coverage includes saved seek-bar progress after refreshing an issue,
+preserving newer durations and confirmed narration absence, and persisting the
+global listened filter across app restarts. Navigation device tests check filter
+selection across different issues and restored navigation state.
 
 With a phone or emulator connected, run the new device smoke tests:
 

@@ -21,6 +21,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import com.rombs.newyorkeraudio.data.repository.NewYorkerRepository
 import com.rombs.newyorkeraudio.ui.articles.ArticleListViewModel
 import com.rombs.newyorkeraudio.ui.articles.ArticleListScreen
+import com.rombs.newyorkeraudio.ui.articles.ArticleFilterPreferences
 import com.rombs.newyorkeraudio.ui.magazines.MagazineGridViewModel
 import com.rombs.newyorkeraudio.ui.magazines.MagazineGridScreen
 import com.rombs.newyorkeraudio.ui.player.PlayerViewModel
@@ -41,7 +42,11 @@ fun AppNavigation(
     onPlayerOpened: () -> Unit = {},
     navController: NavHostController = rememberNavController(),
     history: ListeningHistoryCache? = null,
+    articleFilterPreferences: ArticleFilterPreferences? = null,
 ) {
+    val defaultFilters = remember { ArticleFilterPreferences() }
+    val filters = articleFilterPreferences ?: defaultFilters
+    val articleFilter by filters.filter.collectAsStateWithLifecycle()
     val emptyHistory = remember { MutableStateFlow(emptyList<ListeningHistoryEntry>()) }
     val historyEntries by (history?.entries ?: emptyHistory).collectAsStateWithLifecycle()
     val listenedIds = remember(historyEntries) { historyEntries.map { it.article.id }.toSet() }
@@ -98,6 +103,8 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onArticleClick = { navController.navigate(PlayerRoute(it)) { launchSingleTop = true } },
                 listenedIds = listenedIds,
+                filter = articleFilter,
+                onFilterChange = filters::select,
             )
         }
         composable<HistoryRoute> {
