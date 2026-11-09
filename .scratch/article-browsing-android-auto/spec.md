@@ -4,12 +4,15 @@ Status: ready-for-agent
 
 The user skipped ticket 01, the separate latest-build verification milestone.
 [Ticket 02: known article durations](issues/02-show-known-article-durations.md)
-is complete with automated checks. Host acceptance and
-the remaining feature work are pending.
+is complete with automated checks.
+[Ticket 03: shared issue progress](issues/03-shared-issue-progress.md) implements
+shared summaries, persistent membership, magazine display fractions, and live
+updates. Host acceptance and the remaining feature work are pending.
 
 Source: [feature requests](../../FEATURE_REQUESTS.md), FR-001 through FR-005.
 The testing approach was confirmed: reuse existing interfaces and test coverage.
-Other product choices below are proposed defaults, not confirmed preferences.
+The user confirmed ticket 03's counting rules and scope before implementation.
+Other product choices below remain proposed defaults.
 
 ## Problem Statement
 
@@ -35,8 +38,8 @@ These findings describe the repository, not a verified installed build.
 | Request | Current source | Remaining work after device verification |
 | --- | --- | --- |
 | FR-001: article duration on phone and car | Phone and car lists receive retained known duration after refresh. Car browse subtitles include duration before descriptions. Summary DTOs still have no duration field. | Verify host presentation during integration and add backend summary metadata for durations before first playback. |
-| FR-002: issue progress inside car article browsing | Individual articles receive listened labels and completion extras. No issue-level listened/total summary exists. | Add shared issue counts and a host-supported place to display them. |
-| FR-003: progress on car magazine entries | Magazine nodes have titles and covers, without listened/total counts. | Decorate issue entries with the same counts used inside the issue. |
+| FR-002: issue progress inside car article browsing | Shared summaries are exposed on catalog issue nodes. Article rows retain their existing listened labels. | Ticket 04 places the summary in filter-folder titles for the article-list heading. |
+| FR-003: progress on car magazine entries | Magazine display titles include the shared listened/total count when membership is loaded. Cached counts survive eviction and restart. | Verify grid presentation on DHU/car during integration. |
 | FR-004: car listened filter | Phone has persisted All / Unlistened / Listened filters. Car issue children only filter out known unnarrated articles. | Reuse the filtering rules through browsable car folders. |
 | FR-005: short rewind on car player | Player configuration uses a 15-second seek-back interval and advertises a Back 15 seconds command button. | Verify visibility and behavior in the latest app; make a compatibility fix only if needed. |
 
@@ -217,14 +220,14 @@ with known audio duration and one not yet resolved for playback.
 
 ### Delivery order and completion gates
 
-Ticket 01 is skipped at the user's request. Step 2 is implemented in ticket 02;
-later steps remain planned.
+Ticket 01 is skipped at the user's request. Steps 2 and 3 are implemented in
+tickets 02 and 03; later steps remain planned.
 
 | Step | Scope | Completion gate |
 | --- | --- | --- |
 | 1 | Latest-build phone, DHU, and car verification | Skipped as a standalone ticket at the user's request. |
 | 2 | Known-duration propagation and car labels, FR-001 | Implemented; 169 JVM tests pass, Android test sources compile, debug APK builds, and lint passes. Host acceptance remains in step 7. |
-| 3 | Shared issue summaries, persistence, and updates, FR-002/FR-003 | Fractions match across views and survive refresh, completion, restart, and metadata eviction. |
+| 3 | Shared issue summaries, persistence, and updates, FR-002/FR-003 | Implemented in ticket 03: shared node summaries and magazine fractions survive refresh, completion, restart, and metadata eviction. Folder placement follows in ticket 04; host acceptance remains in step 7. |
 | 4 | Car browse folders, FR-004, plus article-list summary placement | All three filters work with paging, live completion updates, empty states, and stable playback. |
 | 5 | Rewind compatibility fix if host testing shows it is needed, FR-005 | Latest app has a usable 15-second rewind on the tested target host. This step can move earlier if rewind is broken. |
 | 6 | Backend summary duration contract and data availability, remaining FR-001 | Known durations are available before first playback where the backend has narration metadata; absent fields remain compatible. |

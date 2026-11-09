@@ -11,8 +11,8 @@ import com.rombs.newyorkeraudio.playback.artwork.ArtworkCache
 @OptIn(UnstableApi::class)
 fun LibraryNode.toLibraryMediaItem(artwork: ArtworkCache): MediaItem {
     return MediaItem.Builder().setMediaId(id)
-    .setMediaMetadata(MediaMetadata.Builder().setTitle(title.take(256)).setArtist(author?.take(256))
-        .setDisplayTitle(title.take(256)).setSubtitle(displayDescription?.take(512)).setDescription(displayDescription?.take(512))
+    .setMediaMetadata(MediaMetadata.Builder().setTitle(displayTitle.take(256)).setArtist(author?.take(256))
+    .setDisplayTitle(displayTitle.take(256)).setSubtitle(displayDescription?.take(512)).setDescription(displayDescription?.take(512))
         .setIsBrowsable(browsable).setIsPlayable(playable)
         .setMediaType(if (browsable) MediaMetadata.MEDIA_TYPE_FOLDER_MIXED else MediaMetadata.MEDIA_TYPE_AUDIO_BOOK_CHAPTER)
         .setArtworkUri(artwork.uri(artworkUrl))
