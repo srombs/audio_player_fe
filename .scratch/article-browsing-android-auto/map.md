@@ -17,10 +17,14 @@ Ticket 01's standalone latest-build verification was skipped at the user's reque
   folders with whole-issue summary titles, filtering before pagination, and
   per-parent live counts. All 185 JVM tests and build/lint checks pass; both
   independent review axes found no issues. Device/host acceptance is pending.
+- [Ticket 05](issues/05-android-auto-rewind.md) updates Media3 to 1.9.1 so Android
+  Auto receives the standard 15-second rewind button. The user confirmed the fix
+  in DHU.
 
 ## Fog
 
 - Ticket 04's folder navigation, heading visibility, and uninterrupted playback
   during live completion still need DHU/car acceptance.
 - DHU/car fraction visibility and live refresh acceptance remain unverified.
+- The rewind edge cases and real-car check remain in step 7 host acceptance.
 - Immediate cold-install counts across every heading would need a backend contract.

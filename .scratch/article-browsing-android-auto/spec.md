@@ -8,8 +8,10 @@ is complete with automated checks.
 [Ticket 03: shared issue progress](issues/03-shared-issue-progress.md) implements
 shared summaries, persistent membership, magazine display fractions, and live
 updates. [Ticket 04: car browse filters](issues/04-car-browse-filters.md) implements
-the filter folders and article-list summary placement. Host acceptance and the
-remaining feature work are pending.
+the filter folders and article-list summary placement.
+[Ticket 05: Android Auto rewind](issues/05-android-auto-rewind.md) restores the
+15-second rewind button on DHU. Full host acceptance and the remaining feature
+work are pending.
 
 Source: [feature requests](../../FEATURE_REQUESTS.md), FR-001 through FR-005.
 The testing approach was confirmed: reuse existing interfaces and test coverage.
@@ -35,7 +37,7 @@ unless testing shows that Android Auto does not expose or execute it correctly.
 
 ### Current source versus requested behavior
 
-These findings describe the repository, not a verified installed build.
+This table describes the repository and includes recorded host results where available.
 
 | Request | Current source | Remaining work after device verification |
 | --- | --- | --- |
@@ -43,7 +45,7 @@ These findings describe the repository, not a verified installed build.
 | FR-002: issue progress inside car article browsing | Shared summaries are exposed on catalog issue nodes and filter-folder titles for the article-list heading. Article rows retain their existing listened labels. | Verify actual heading visibility on DHU/car during integration. |
 | FR-003: progress on car magazine entries | Magazine display titles include the shared listened/total count when membership is loaded. Cached counts survive eviction and restart. | Verify grid presentation on DHU/car during integration. |
 | FR-004: car listened filter | Car issues expose All / Unlistened / Listened folders using the phone's filter rules, with independent folder selection and per-filter live counts. | Verify navigation and live completion on DHU/car during integration. |
-| FR-005: short rewind on car player | Player configuration uses a 15-second seek-back interval and advertises a Back 15 seconds command button. | Verify visibility and behavior in the latest app; make a compatibility fix only if needed. |
+| FR-005: short rewind on car player | Media3 1.9.1 publishes the existing Back 15 seconds button to Android Auto. The user confirmed the fix on DHU. | Complete the rewind edge cases and real-car check in step 7. |
 
 ### First milestone: verify the latest app
 
@@ -211,9 +213,9 @@ with known audio duration and one not yet resolved for playback.
   after reconnect, and with the phone activity closed. Expected target is the
   greater of zero and current position minus 15 seconds, allowing normal player
   seek tolerance.
-- If the command works but is not visible, inspect available commands and the
-  Media3-to-legacy controller presentation before changing playback logic.
-  Confirm any compatibility remedy works with the pinned Media3 1.8.0 version.
+- DHU testing found that Media3 1.8.0 advertised rewind without publishing the
+  button in the platform playback state. Ticket 05 updates to Media3 1.9.1,
+  which bridges the existing standard command to Android Auto.
 - Keep standard seek semantics and existing controller access checks. Do not
   duplicate standard seek with a custom session action or turn previous-track
   navigation into rewind as a shortcut.
@@ -222,8 +224,8 @@ with known audio duration and one not yet resolved for playback.
 
 ### Delivery order and completion gates
 
-Ticket 01 is skipped at the user's request. Steps 2 through 4 are implemented in
-tickets 02 through 04; later steps remain planned.
+Ticket 01 is skipped at the user's request. Steps 2 through 5 are implemented in
+tickets 02 through 05. Steps 6 and 7 remain planned.
 
 | Step | Scope | Completion gate |
 | --- | --- | --- |
@@ -231,7 +233,7 @@ tickets 02 through 04; later steps remain planned.
 | 2 | Known-duration propagation and car labels, FR-001 | Implemented; 169 JVM tests pass, Android test sources compile, debug APK builds, and lint passes. Host acceptance remains in step 7. |
 | 3 | Shared issue summaries, persistence, and updates, FR-002/FR-003 | Implemented in ticket 03: shared node summaries and magazine fractions survive refresh, completion, restart, and metadata eviction. Folder placement follows in ticket 04; host acceptance remains in step 7. |
 | 4 | Car browse folders, FR-004, plus article-list summary placement | Implemented in ticket 04: filter folders, shared summary titles, filtering before paging, and per-parent live counts. Host presentation and active-playback acceptance remain in step 7. |
-| 5 | Rewind compatibility fix if host testing shows it is needed, FR-005 | Latest app has a usable 15-second rewind on the tested target host. This step can move earlier if rewind is broken. |
+| 5 | Rewind compatibility, FR-005 | Implemented in ticket 05 and confirmed on DHU. The full rewind matrix remains in step 7. |
 | 6 | Backend summary duration contract and data availability, remaining FR-001 | Known durations are available before first playback where the backend has narration metadata; absent fields remain compatible. |
 | 7 | Integration and host acceptance | Run relevant automated checks and the phone/DHU/car matrix; record any remaining host limitations. |
 

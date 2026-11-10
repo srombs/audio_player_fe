@@ -3,9 +3,9 @@
 Steps 1–12 and step 13's lifecycle fixes/automated coverage are implemented.
 Main and instrumentation sources compile, all 185 JVM
 tests pass, the debug APK builds, and Android lint passes. The user confirmed DHU
-connection, issue browsing, and audio playback. Steps 7–13 need device regression
-validation; step 13's live lifecycle checks remain pending.
-The latest ADB check found no connected device; device execution remains pending.
+connection, issue browsing, audio playback, and the ticket 05 rewind fix.
+Device regression checks for steps 7–13 and connected instrumentation execution
+remain pending.
 
 ## Build and automated checks
 
@@ -303,3 +303,18 @@ and audio playback on October 13, 2026. Record the phone/Android Auto/DHU versio
 and mark the remaining checks above as passed or failed after each live run.
 Compiled instrumentation tests have not been run in the coding workspace and do
 not establish device-level validation of steps 7–13.
+
+## Ticket 05 rewind acceptance
+
+On November 10, 2026, the user confirmed **Back 15 seconds** on DHU after running
+the Media3 1.9.1 build from Android Studio. The previous build showed only Play.
+The updated phone session also exposed the rewind button.
+
+For step 7, record the app commit and Android Auto, DHU, and car host versions.
+Use a seekable narration and check the following on each target host:
+
+- Rewind while playing and paused. The position moves back about 15 seconds
+  within the same article, and playback state and speed are preserved.
+- Rewind from within the first 15 seconds. The position clamps at zero.
+- Rewind with the phone activity closed, then reconnect and confirm the control
+  still works. Check that the phone shows the shared rewound position.
