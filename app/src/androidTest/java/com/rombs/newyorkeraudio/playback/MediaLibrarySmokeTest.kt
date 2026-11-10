@@ -1,6 +1,7 @@
 package com.rombs.newyorkeraudio.playback
 
 import android.content.ComponentName
+import android.content.Intent
 import android.net.Uri
 import android.os.Looper
 import android.os.Bundle
@@ -14,22 +15,154 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.rombs.newyorkeraudio.NewYorkerAudioApplication
+import com.rombs.newyorkeraudio.data.repository.FakeNewYorkerRepository
+import com.rombs.newyorkeraudio.data.repository.NewYorkerRepository
+import com.rombs.newyorkeraudio.data.repository.TestNarration
+import com.rombs.newyorkeraudio.domain.model.Magazine
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.ListenableFuture
 import com.rombs.newyorkeraudio.playback.library.LIBRARY_ROOT_ID
 import com.rombs.newyorkeraudio.playback.library.LIBRARY_ISSUES_ID
 import com.rombs.newyorkeraudio.playback.library.LIBRARY_CONTINUE_ID
+import com.rombs.newyorkeraudio.playback.library.CatalogLibrary
+import com.rombs.newyorkeraudio.playback.library.PreferencesCatalogStorage
+import com.rombs.newyorkeraudio.playback.library.issueMediaId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.FileNotFoundException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicReference
 
 /** No activity or live backend is required for root discovery and provider checks. */
 @RunWith(AndroidJUnit4::class)
 class MediaLibrarySmokeTest {
+    @Test fun cachedFilterTreeAndHistoryChangesReachRealBrowserWithoutChangingPlaybackState() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val serviceIntent = Intent(context, PlaybackService::class.java)
+        instrumentation.runOnMainSync { context.stopService(serviceIntent) }
+        instrumentation.waitForIdleSync()
+        val storage = PreferencesCatalogStorage(context)
+        val savedCatalog = storage.read()
+        val historyStorage = PreferencesListeningHistoryStorage(context)
+        val savedHistory = historyStorage.read()
+        val date = "2026-10-12"
+        val first = TestNarration.article.copy(
+            id = "https://www.newyorker.com/magazine/2026/10/12/ticket-04-${System.nanoTime()}",
+            imageUrl = null, audio = TestNarration.article.audio!!.copy(audioUrl = null))
+        val second = first.copy(id = first.id + "-second")
+        val fixture = object : NewYorkerRepository by FakeNewYorkerRepository() {
+            override suspend fun getMagazines() = listOf(Magazine(date, "Fictional issue", date, null))
+            override suspend fun getArticles(magazineId: String) = listOf(first, second)
+            override suspend fun resolveAudio(articleId: String, refresh: Boolean) = error("Browsing must not resolve audio")
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        var connection: ListenableFuture<MediaBrowser>? = null
+        try {
+            runBlocking {
+                // Build a fresh fixture instead of merging any previously saved catalog.
+                context.getSharedPreferences("car_catalog", 0).edit().remove("snapshot").commit()
+                val fresh = CatalogLibrary(fixture, scope, storage)
+                fresh.children(LIBRARY_ISSUES_ID, 0, 100)
+                fresh.children(issueMediaId(date), 0, 3)
+            }
+            scope.cancel()
+            val notifications = LinkedBlockingQueue<Pair<String, Int>>()
+            val listener = object : MediaBrowser.Listener {
+                override fun onChildrenChanged(browser: MediaBrowser, parentId: String, itemCount: Int,
+                    params: LibraryParams?) {
+                    if (itemCount != Int.MAX_VALUE) notifications.add(parentId to itemCount)
+                }
+            }
+            instrumentation.runOnMainSync {
+                connection = MediaBrowser.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
+                    .setApplicationLooper(Looper.getMainLooper()).setListener(listener).buildAsync()
+            }
+            val browser = connection!!.get(5, TimeUnit.SECONDS)
+            fun children(id: String): List<MediaItem> {
+                lateinit var request: ListenableFuture<LibraryResult<ImmutableList<MediaItem>>>
+                instrumentation.runOnMainSync { request = browser.getChildren(id, 0, 100, null) }
+                val result = request.get(5, TimeUnit.SECONDS)
+                assertEquals(LibraryResult.RESULT_SUCCESS, result.resultCode)
+                return result.value!!
+            }
+            val folders = children(issueMediaId(date))
+            assertEquals(listOf("All · 0/2 listened", "Unlistened · 0/2 listened", "Listened · 0/2 listened"),
+                folders.map { it.mediaMetadata.title.toString() })
+            for (folder in folders) {
+                assertEquals(true, folder.mediaMetadata.isBrowsable)
+                assertEquals(false, folder.mediaMetadata.isPlayable)
+                assertNull(folder.localConfiguration)
+                lateinit var lookup: ListenableFuture<LibraryResult<MediaItem>>
+                instrumentation.runOnMainSync { lookup = browser.getItem(folder.mediaId) }
+                assertEquals(folder.mediaMetadata, lookup.get(5, TimeUnit.SECONDS).value!!.mediaMetadata)
+            }
+            assertEquals(listOf(first.id, second.id), children(folders[0].mediaId).map { it.mediaId })
+            assertTrue(children(folders[2].mediaId).isEmpty())
+            lateinit var invalid: ListenableFuture<LibraryResult<MediaItem>>
+            instrumentation.runOnMainSync { invalid = browser.getItem("ny:filter:$date:INVALID") }
+            assertEquals(LibraryResult.RESULT_ERROR_BAD_VALUE, invalid.get(5, TimeUnit.SECONDS).resultCode)
+
+            for (id in listOf(LIBRARY_ISSUES_ID, issueMediaId(date)) + folders.map { it.mediaId }) {
+                lateinit var subscription: ListenableFuture<LibraryResult<Void>>
+                instrumentation.runOnMainSync { subscription = browser.subscribe(id, null) }
+                assertEquals(LibraryResult.RESULT_SUCCESS, subscription.get(5, TimeUnit.SECONDS).resultCode)
+            }
+            var originalId: String? = null
+            var originalPlay = false
+            var originalPosition = 0L
+            var originalSpeed = 1f
+            instrumentation.runOnMainSync {
+                originalId = browser.currentMediaItem?.mediaId
+                originalPlay = browser.playWhenReady
+                originalPosition = browser.currentPosition
+                originalSpeed = browser.playbackParameters.speed
+                (context.applicationContext as NewYorkerAudioApplication).container.historyCache.markCompleted(first)
+            }
+            val changes = mutableMapOf<String, Int>()
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+            while (changes.size < 5 && System.nanoTime() < deadline) {
+                notifications.poll(100, TimeUnit.MILLISECONDS)?.let { changes[it.first] = it.second }
+            }
+            assertEquals(mapOf(
+                LIBRARY_ISSUES_ID to 1, issueMediaId(date) to 3,
+                folders[0].mediaId to 2, folders[1].mediaId to 1, folders[2].mediaId to 1,
+            ), changes)
+            assertEquals(listOf(second.id), children(folders[1].mediaId).map { it.mediaId })
+            val completed = children(folders[2].mediaId).single()
+            assertEquals(first.id, completed.mediaId)
+            assertTrue(completed.mediaMetadata.subtitle.toString().startsWith("Listened · 27 min"))
+            assertEquals(listOf("All · 1/2 listened", "Unlistened · 1/2 listened", "Listened · 1/2 listened"),
+                children(issueMediaId(date)).map { it.mediaMetadata.title.toString() })
+            instrumentation.runOnMainSync {
+                assertEquals(originalId, browser.currentMediaItem?.mediaId)
+                assertEquals(originalPlay, browser.playWhenReady)
+                assertEquals(originalSpeed, browser.playbackParameters.speed)
+                if (!originalPlay) assertEquals(originalPosition, browser.currentPosition)
+            }
+        } finally {
+            scope.cancel()
+            instrumentation.runOnMainSync {
+                connection?.let { MediaBrowser.releaseFuture(it) }
+                context.stopService(serviceIntent)
+            }
+            instrumentation.waitForIdleSync()
+            if (savedCatalog == null) context.getSharedPreferences("car_catalog", 0).edit().remove("snapshot").commit()
+            else storage.write(savedCatalog)
+            // The synthetic history entry stays in the singleton only until this test process exits.
+            historyStorage.write(savedHistory ?: "{\"version\":1,\"entries\":[]}")
+        }
+    }
+
     @Test fun invalidSearchFinishesAndControllerReconnectLeavesSessionUnchanged() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

@@ -13,9 +13,14 @@ Ticket 01's standalone latest-build verification was skipped at the user's reque
   from complete distinct membership and durable listened history. Membership for
   200 headings survives the 24-list article cache. Unknown membership stays
   unavailable; recent/requested metadata hydrates in bounded batches.
+- [Ticket 04](issues/04-car-browse-filters.md) adds All / Unlistened / Listened
+  folders with whole-issue summary titles, filtering before pagination, and
+  per-parent live counts. All 185 JVM tests and build/lint checks pass; both
+  independent review axes found no issues. Device/host acceptance is pending.
 
 ## Fog
 
-- Ticket 04 still needs car filter folders and article-list summary placement.
+- Ticket 04's folder navigation, heading visibility, and uninterrupted playback
+  during live completion still need DHU/car acceptance.
 - DHU/car fraction visibility and live refresh acceptance remain unverified.
 - Immediate cold-install counts across every heading would need a backend contract.
