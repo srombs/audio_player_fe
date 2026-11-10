@@ -1,6 +1,6 @@
 # Ticket 04 — Android Auto browse filters and article-list progress
 
-Status: claimed
+Status: resolved
 Type: task
 Blocked by: 03
 
@@ -129,3 +129,62 @@ rewind controls, custom Android Auto screens, and a Media3 upgrade.
 - Created at the user's request from the canonical step 4 scope. Folder
   navigation and text placement follow the spec's proposed defaults; actual
   Android Auto presentation remains subject to integration acceptance.
+- The user confirmed the scope, existing catalog/mapper/service test seams, and
+  Matt's implementation/TDD/review workflow, then authorized implementation on
+  a new branch.
+
+## Answer
+
+Implemented `Issues → issue → All / Unlistened / Listened → articles` using
+deterministic filter-folder IDs. Folders are browsable and nonplayable, carry
+ticket 03's whole-issue summary, and preserve the existing issue/article IDs.
+Unknown membership reports unavailable progress instead of an invented fraction.
+
+The existing listened filter helper runs on narration-eligible articles before
+pagination. Folder selection is independent of the phone preference. Metadata
+loads, cache bounds, durable history, search, Continue Listening, and playback
+selection keep their existing behavior; browsing does not resolve audio.
+
+Completion, narration/membership refreshes, and article artwork changes notify
+affected issue and filter parents with their own child counts. Shared articles,
+multiple completions, legacy membership, and evicted issue details are covered.
+All notification emission occurs outside the catalog mutex. There is no added
+player mutation when an article leaves Unlistened.
+
+Validation: all 185 JVM tests passed, main Kotlin and Android instrumentation
+sources compiled, debug APK assembly passed, and Android lint passed with
+0 errors and 38 warnings in unchanged files. New folder, filtering, completion,
+and artwork cases were observed failing before their corresponding fixes.
+Checks used `-PbackendBaseUrl=https://example.com/`, without a live backend.
+
+The new real-browser smoke case compiles and exercises the persisted fictional
+catalog, folder metadata/lookup/errors, completion notifications, and unchanged
+idle-session state. It was not executed: ADB found no connected device. No APK
+was installed. Connected instrumentation, actual heading/navigation presentation,
+and completion while actively playing remain delivery step 7 acceptance work;
+the idle-session test does not establish active-playback continuity. The
+[Android Auto test guide](../../../ANDROID_AUTO_TESTING.md) records these limits
+and the updated host checklist.
+
+## Standards
+
+No Standards findings.
+
+The independent reviewer found that the diff follows the documented tracker,
+triage, and domain-document rules, with no actionable Fowler baseline smells or
+additional confirmed bugs. The filter-folder type and centralized `issueChanges`
+function keep identity, presentation, and notification behavior cohesive.
+
+## Spec
+
+No material Spec findings.
+
+The independent reviewer found that the implementation matches the browse
+hierarchy, deterministic identity, validation, eligibility/history filtering
+before pagination, whole-issue summaries, offline restoration, and per-parent
+notifications, including legacy snapshots and evicted details. No scope creep
+was found. Active-playback continuity and host presentation remain explicitly
+deferred to step 7 and are validation limits rather than implementation findings.
+
+Review summary: Standards 0 findings; Spec 0 findings. Both reviewers compared
+`6078c245367e2fc987acaaf0e48ef70b65463c61` with implementation commit `d6f7854`.

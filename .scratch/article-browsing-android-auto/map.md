@@ -4,8 +4,6 @@
 
 The [canonical spec](spec.md) defines delivery order and acceptance gates.
 Ticket 01's standalone latest-build verification was skipped at the user's request.
-[Ticket 04](issues/04-car-browse-filters.md) is implemented and awaiting review;
-its ticket 03 dependency is resolved.
 
 ## Decisions-so-far
 
@@ -15,6 +13,10 @@ its ticket 03 dependency is resolved.
   from complete distinct membership and durable listened history. Membership for
   200 headings survives the 24-list article cache. Unknown membership stays
   unavailable; recent/requested metadata hydrates in bounded batches.
+- [Ticket 04](issues/04-car-browse-filters.md) adds All / Unlistened / Listened
+  folders with whole-issue summary titles, filtering before pagination, and
+  per-parent live counts. All 185 JVM tests and build/lint checks pass; both
+  independent review axes found no issues. Device/host acceptance is pending.
 
 ## Fog
 
