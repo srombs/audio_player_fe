@@ -188,3 +188,14 @@ deferred to step 7 and are validation limits rather than implementation findings
 
 Review summary: Standards 0 findings; Spec 0 findings. Both reviewers compared
 `6078c245367e2fc987acaaf0e48ef70b65463c61` with implementation commit `d6f7854`.
+
+## Review artifacts
+
+- [Self-contained HTML overview](../../../docs/reviews/ticket-04/index.html), with
+  interactive before/after navigation, all three filters, completion and replay,
+  pagination, empty and unavailable membership, and the 100-row browse cap.
+
+The overview uses fictional content and simulated playback, not device captures
+or Android code execution. Headless-browser checks passed for its controls,
+scenarios, local links, five viewport widths (320–1440 px), and absence of script
+errors/external requests. Desktop and mobile renders were visually inspected.

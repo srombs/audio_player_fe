@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Ticket 04 review · Android Auto article filters</title>
+  <style>
+    :root{--paper:#f5f3ed;--white:#fffefa;--ink:#202d2b;--muted:#606d68;--line:#d8ddd3;--green:#235b44;--wash:#e3ebdf;--gold:#bd8c43;--night:#1d2425;--night-line:#ffffff25}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 system-ui,-apple-system,sans-serif}a{color:var(--green);text-underline-offset:4px}button,select{font:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.45}button,select,a{touch-action:manipulation}button:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:4px}[hidden]{display:none!important}.shell{max-width:1180px;margin:auto;padding:0 30px}.top{border-bottom:1px solid var(--line)}.top .shell{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:20px;padding-bottom:20px}.brand{font-weight:700;letter-spacing:-.4px}.top nav{display:flex;gap:22px;font-size:13px}.top nav a{text-decoration:none;color:var(--muted)}.hero{padding:60px 0 38px;display:grid;grid-template-columns:1.5fr 1fr;gap:40px}.eyebrow{font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:2px;color:var(--green)}h1{font:clamp(41px,5.5vw,70px)/1.06 Georgia,serif;letter-spacing:-2px;margin:17px 0 22px}h2{font:30px/1.2 Georgia,serif;margin:0}h3{font-size:16px;margin:0 0 8px}p{margin:0 0 15px}.hero p{max-width:580px;color:var(--muted);font-size:17px}.stamp{font-size:12px;font-weight:650;display:flex;align-items:center;gap:8px}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}.route{align-self:center;border-left:1px solid var(--line);padding-left:30px;font:19px/1.8 Georgia,serif}.route .step{display:block;color:var(--muted);font:12px/2.2 ui-monospace,monospace}.route strong{color:var(--green)}.route small{display:block;margin-top:18px;color:var(--muted);font:11px/1.5 ui-monospace,monospace;overflow-wrap:anywhere}.features{display:grid;grid-template-columns:repeat(3,1fr);border-block:1px solid var(--line);margin-bottom:45px}.feature{padding:23px 22px 23px 0}.feature+.feature{border-left:1px solid var(--line);padding-left:22px}.feature strong{display:block;font-size:14px;margin-bottom:6px}.feature p{font-size:13px;color:var(--muted);margin:0}.section-title{display:flex;gap:17px;align-items:center;margin-bottom:20px}.number{font:12px ui-monospace,monospace;color:var(--green)}.note{font-size:12px;padding:13px 16px;border:1px solid var(--line);background:#eeeee5;color:var(--muted);margin-bottom:20px}.tools{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}.segments{display:flex;padding:4px;gap:4px;background:#e6e9e0;border-radius:9px}.segments button{background:transparent;border:0;border-radius:6px;padding:8px 13px;font-size:13px}.segments button[aria-pressed=true]{background:var(--white);box-shadow:0 1px 3px #0001;color:var(--green);font-weight:650}label{font-size:12px;color:var(--muted);margin-right:8px}select{max-width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--white);font-size:13px}.caption{font-size:13px;color:var(--muted);min-height:42px}.preview{display:grid;grid-template-columns:1.85fr 1fr;gap:24px;align-items:start}.car{background:var(--night);color:#eff2ec;border:7px solid #333a3a;border-radius:20px;overflow:hidden;box-shadow:0 15px 28px #16252218}.car-head{padding:18px 20px;border-bottom:1px solid var(--night-line)}.car-head small{display:block;font-size:10px;color:#b2bdb4;margin-bottom:5px}.car-head strong{font-size:17px}.car-body{display:grid;grid-template-columns:1fr 1.65fr;min-height:310px}.folder-list{padding:12px;border-right:1px solid var(--night-line)}.folder-list button{display:block;width:100%;background:transparent;border:1px solid transparent;border-radius:7px;color:#dbe3db;text-align:left;padding:12px 10px;font-size:12px;line-height:1.5;margin-bottom:6px}.folder-list button[aria-pressed=true]{background:#34483d;border-color:#829981}.folder-label{display:block;font-weight:700}.folder-count{display:block;color:#c8e4af;font-size:10px;margin-top:3px}.article-list{min-width:0;padding:7px 18px}.article{padding:12px 0;border-bottom:1px solid var(--night-line)}.article:last-child{border-bottom:0}.article strong{font-size:12px;display:block;font-weight:600}.article small{font-size:10px;color:#b2bdb4;display:block;margin-top:3px}.active-label{display:inline-block;font-size:9px;color:#c8e4af;margin-top:3px}.empty{font-size:13px;color:#b2bdb4;padding-top:35px}.pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 17px;border-top:1px solid var(--night-line);font-size:10px;color:#b2bdb4}.pager button{background:transparent;color:#e0e8de;border:1px solid #77837b;padding:4px 8px;border-radius:4px;font-size:11px}.player{padding:13px 17px;background:#293a31;border-top:1px solid var(--night-line);display:flex;align-items:center;gap:10px}.play-icon{font-size:21px;color:#c8e4af}.player strong{font-size:11px;display:block}.player small{font-size:10px;color:#b2bdb4;display:block}.player .speed{margin-left:auto;font:11px ui-monospace,monospace;white-space:nowrap}.mock-caption{font-size:11px;color:var(--muted);margin-top:12px}.panel{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:23px;min-width:0}.meter{font:43px/1.1 Georgia,serif;letter-spacing:-1px;color:var(--green);margin:12px 0}.panel p{font-size:13px;color:var(--muted)}.totals{display:flex;gap:18px;border-block:1px solid var(--line);padding:13px 0;margin-top:20px;font-size:10px;color:var(--muted)}.totals strong{font-size:20px;color:var(--ink);display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.actions button{font-size:12px;padding:9px 11px;background:var(--paper);border:1px solid var(--line);border-radius:6px}.actions .primary{background:var(--green);border-color:var(--green);color:white}.event{font-size:12px;color:var(--green);margin-top:14px;min-height:57px}.details{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin:48px 0}.checks{list-style:none;margin:0;padding:0}.checks li{padding:11px 0;border-bottom:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between;gap:20px}.pass{color:var(--green);text-align:right;font-weight:650}.pending{color:#81602a;text-align:right}.rules{font-size:13px;color:var(--muted);padding-left:18px}.rules li{padding:4px 0}details{font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);padding:13px 0}summary{cursor:pointer;color:var(--ink);font-weight:650}details p{margin:12px 0 0}.scope{padding:20px;background:var(--wash);border-radius:8px;margin-top:22px}.scope p{font-size:13px;color:var(--muted);margin:0}.links{display:flex;gap:17px;flex-wrap:wrap;font-size:12px;margin-top:22px}footer{border-top:1px solid var(--line);padding-top:20px!important;padding-bottom:25px!important;display:flex;justify-content:space-between;gap:15px;color:var(--muted);font-size:11px}
+    @media(max-width:960px){.preview{grid-template-columns:1.5fr 1fr}.car-body{grid-template-columns:1fr}.folder-list{display:flex;gap:4px;border-right:0;border-bottom:1px solid var(--night-line);padding:10px}.folder-list button{margin:0;padding:9px 7px;min-width:0}.folder-count{font-size:9px}.article-list{min-height:265px}.hero{gap:25px}.details{gap:28px}}
+    @media(max-width:700px){.preview,.details{grid-template-columns:1fr}.hero{grid-template-columns:1fr;gap:18px;padding-top:35px}.route{border-left:0;border-top:1px solid var(--line);padding:18px 0 0}.route small{margin-top:10px}.features{grid-template-columns:1fr;margin-bottom:30px}.feature,.feature+.feature{padding:16px 0;border-left:0}.feature+.feature{border-top:1px solid var(--line)}.panel{padding:20px}.event{min-height:38px}.details{margin-top:35px;gap:32px}}
+    @media(max-width:420px){.shell{padding:0 17px}.top .shell{align-items:start}.top nav{font-size:11px;gap:10px;flex-wrap:wrap;justify-content:end}.brand{font-size:13px}.tools{align-items:start;flex-direction:column}.tools>div:last-child{width:100%}select{width:100%;margin-top:5px}.segments button{font-size:12px;padding:8px 10px}h1{letter-spacing:-1.5px}.car{border-width:5px;border-radius:14px}.car-head{padding:15px}.car-head strong{font-size:15px}.folder-list{padding:7px}.folder-list button{font-size:11px;padding:8px 5px}.folder-count{font-size:8px}.player{padding:12px}.player .speed{font-size:10px}footer{flex-direction:column;gap:4px}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="shell"><div class="brand">New Yorker Audio <span style="font-weight:400;color:var(--muted)">/ review</span></div><nav aria-label="Review sections"><a href="#preview">Preview</a><a href="#validation">Validation</a><a href="#scope">Scope</a></nav></div></header>
+  <main class="shell">
+    <section class="hero">
+      <div><div class="eyebrow">Ticket 04 · Android Auto article filters</div><h1>Find what’s left.<br>Keep listening.</h1><p>Open an issue, choose All, Unlistened, or Listened, and see your whole-issue progress above the articles.</p><div class="stamp"><span class="dot"></span>Implementation complete · device acceptance pending</div></div>
+      <aside class="route"><span class="step">Issues → selected issue</span><strong>All / Unlistened / Listened</strong><span class="step">↓ articles · same playback identity</span><small>ticket-04-car-browse-filters<br>Based on main · 6078c24</small></aside>
+    </section>
+    <div class="features"><div class="feature"><strong>Three folders, one familiar choice</strong><p>The car reuses the phone’s listened rules. Choosing a car folder leaves the phone’s saved filter alone.</p></div><div class="feature"><strong>One whole-issue fraction</strong><p>Every folder shows the same progress. Filtering or moving between pages never changes the denominator.</p></div><div class="feature"><strong>Completion updates the browse tree</strong><p>Filtered results and parent counts refresh. Removing a row from Unlistened adds no player mutation.</p></div></div>
+    <section id="preview" aria-labelledby="preview-title">
+      <div class="section-title"><span class="number">01 /</span><h2 id="preview-title">Explore the change</h2></div>
+      <p class="note"><strong>Illustrative browser demo, not device screenshots.</strong> Fictional articles and simulated playback. This page does not run the Android code. Android Auto controls the actual navigation, heading visibility, and refresh presentation.</p>
+      <div class="tools"><div class="segments" role="group" aria-label="Compare behavior"><button type="button" id="before" aria-pressed="false">Before ticket 04</button><button type="button" id="after" aria-pressed="true">After ticket 04</button></div><div><label for="scenario">Issue state</label><select id="scenario"><option value="loaded">Complete membership</option><option value="unknown">Legacy cache · progress unavailable</option><option value="empty">No eligible articles</option><option value="large">125 members · 100 browse rows</option></select></div></div>
+      <p class="caption" id="caption" aria-live="polite"></p>
+      <div class="preview">
+        <div>
+          <div class="car" id="car-preview">
+            <div class="car-head"><small>‹ &nbsp; Issues / October 12, 2026</small><strong id="heading"></strong></div>
+            <div class="car-body"><nav class="folder-list" id="folders" aria-label="Article filters"><button type="button" data-filter="all" aria-pressed="false"><span class="folder-label">All</span><span class="folder-count"></span></button><button type="button" data-filter="unlistened" aria-pressed="true"><span class="folder-label">Unlistened</span><span class="folder-count"></span></button><button type="button" data-filter="listened" aria-pressed="false"><span class="folder-label">Listened</span><span class="folder-count"></span></button></nav><div class="article-list" id="articles" aria-live="polite"></div></div>
+            <div class="pager"><button type="button" id="previous" aria-label="Previous article page">←</button><span id="page-label"></span><button type="button" id="next" aria-label="Next article page">→</button></div>
+            <div class="player"><span class="play-icon" aria-hidden="true">Ⅱ</span><div><strong id="playing-title"></strong><small id="playing-state"></small></div><span class="speed" id="playing-position"></span></div>
+          </div>
+          <p class="mock-caption">The simulated player stays on the same article when a completion removes its row. Actual active-playback continuity still needs device acceptance.</p>
+        </div>
+        <aside class="panel"><div class="eyebrow">Whole issue · every folder</div><div class="meter" id="summary"></div><p id="explanation"></p><div class="totals"><span><strong id="all-count"></strong>All rows</span><span><strong id="unlistened-count"></strong>Unlistened</span><span><strong id="listened-count"></strong>Listened</span></div><div class="actions"><button type="button" id="finish" class="primary">Complete active article</button><button type="button" id="replay">Replay active article</button><button type="button" id="reset">Reset example</button></div><div class="event" id="event" role="status"></div><p>These row counts describe the browsable set. The folder-title fraction describes the entire eligible issue.</p></aside>
+      </div>
+    </section>
+    <section class="details" id="validation">
+      <div><div class="section-title"><span class="number">02 /</span><h2>Validation</h2></div><ul class="checks"><li><span>JVM regression suite</span><span class="pass">185 passed</span></li><li><span>Main / Android test sources</span><span class="pass">Compiled</span></li><li><span>Debug APK / Android lint</span><span class="pass">Passed</span></li><li><span>Independent Standards / Spec review</span><span class="pass">0 / 0 findings</span></li><li><span>Connected instrumentation</span><span class="pending">Not run · no device</span></li><li><span>DHU / car / active completion</span><span class="pending">Pending</span></li></ul><details><summary>What failed before the implementation?</summary><p>The new folder test received article rows instead of the three filter folders. Filter navigation failed as an unknown library parent. Completion and artwork tests lacked the filter-specific notifications. Each case passed after its corresponding implementation.</p></details><details><summary>What do the automated checks cover?</summary><p>Folder order and flags; lookup and malformed IDs; eligibility and history; filtering before paging; empty results versus errors; restart and offline browsing; unknown membership; complete totals beyond the detail cap; shared articles; multiple completions; all 200 retained issue memberships; narration and artwork updates.</p></details><details><summary>What does the device smoke test establish?</summary><p>Its source compiles. When executed, it connects to the real service using a cached fictional catalog and checks folder metadata, lookup, errors, subscriptions, completion notifications, and unchanged idle-session state. It does not start audio. Compilation and this browser demo do not establish that the device test or active-playback acceptance passed.</p></details></div>
+      <div id="scope"><div class="section-title"><span class="number">03 /</span><h2>Rules &amp; scope</h2></div><ul class="rules"><li>Known unnarrated articles are excluded. Unknown narration remains eligible.</li><li>Partly played articles remain Unlistened until the existing completion threshold qualifies them.</li><li>Replaying keeps the listened status. Shared articles update every affected issue.</li><li>Filter before pagination and preserve article order and playable IDs.</li><li>Known empty membership shows <strong>0/0 listened</strong>. Unknown membership shows <strong>Progress unavailable</strong>.</li><li>The existing 100-article browse cap remains. The whole-issue summary uses complete membership.</li><li>Browse and folder lookup use metadata, without resolving audio or exposing stream URLs.</li></ul><div class="scope"><h3>Still to verify on DHU / car</h3><p>The extra navigation level, touch and rotary use, folder and article-list heading visibility, empty filters, live completion during playback, reconnect, and phone-background behavior. Backend duration contracts and rewind compatibility remain separate work.</p></div><div class="links"><a href="../../../.scratch/article-browsing-android-auto/issues/04-car-browse-filters.md">Ticket 04</a><a href="../../../.scratch/article-browsing-android-auto/spec.md">Feature spec</a><a href="../../../ANDROID_AUTO_TESTING.md">Host checklist</a><a href="../ticket-03/index.html">Ticket 03 overview</a></div></div>
+    </section>
+  </main>
+  <footer class="shell"><span>Ticket 04 · self-contained review artifact · fictional content</span><span>Local build checks used an example backend URL.</span></footer>
+  <script>
+    (() => {
+      'use strict';
+      const el = id => document.getElementById(id);
+      const labels = {all: 'All', unlistened: 'Unlistened', listened: 'Listened'};
+      const titles = ['The City After Midnight', 'A Life Between the Pages', 'The Rooftop Garden', 'Following the River', 'The Sound of a Small Room', 'Before the Curtain Rises', 'An Unsent Letter', 'Inside the Workshop', 'Looking at the Ordinary', 'The Last Train Home', 'On the Changing Coast', 'A Table for Two'];
+      let after = true, filter = 'unlistened', page = 0, members = [], activeId = null;
+      const pageSize = 4;
+      const scenario = () => el('scenario').value;
+      const browsable = () => members.slice(0, 100);
+      const matching = choice => browsable().filter(article => choice === 'all' || article.listened === (choice === 'listened'));
+      const active = () => members.find(article => article.id === activeId);
+      const progress = () => scenario() === 'unknown' ? 'Progress unavailable' : `${members.filter(article => article.listened).length}/${members.length} listened`;
+      function reset() {
+        const state = scenario();
+        const size = state === 'large' ? 125 : state === 'empty' ? 0 : state === 'unknown' ? 4 : 12;
+        members = Array.from({length: size}, (_, index) => ({
+          id: index,
+          title: titles[index % titles.length] + (index >= titles.length ? ` · ${index + 1}` : ''),
+          minutes: 18 + index % 17,
+          listened: state === 'large' ? index === 124 : index < (state === 'unknown' ? 1 : 3),
+        }));
+        activeId = members.find(article => !article.listened)?.id ?? null;
+        page = 0;
+        el('event').textContent = '';
+        render();
+      }
+      function render() {
+        const currentFilter = after ? filter : 'all';
+        const rows = matching(currentFilter);
+        page = Math.min(page, Math.max(0, Math.ceil(rows.length / pageSize) - 1));
+        const label = progress();
+        el('before').setAttribute('aria-pressed', String(!after));
+        el('after').setAttribute('aria-pressed', String(after));
+        el('folders').hidden = !after;
+        el('car-preview').querySelector('.car-body').style.gridTemplateColumns = !after ? '1fr' : '';
+        document.querySelectorAll('[data-filter]').forEach(button => {
+          button.setAttribute('aria-pressed', String(button.dataset.filter === filter));
+          button.querySelector('.folder-count').textContent = label;
+        });
+        const headingTitle = after ? labels[filter] : 'October 12, 2026';
+        el('heading').textContent = scenario() === 'unknown' ? headingTitle : `${headingTitle} · ${label}`;
+        el('summary').textContent = label;
+        for (const choice of Object.keys(labels)) el(`${choice}-count`).textContent = String(matching(choice).length);
+        el('caption').textContent = !after ? 'Before: opening an issue led directly to articles. Individual listened labels and ticket 03’s issue progress already existed; there was no car filter-folder choice.' : scenario() === 'large' ? 'The full denominator is 125. Only the first 100 article details are browsable; the completed article outside that set still counts toward issue progress.' : scenario() === 'unknown' ? 'A legacy cache can filter its saved rows using history while complete issue membership is unavailable. No exact whole-issue fraction is invented.' : scenario() === 'empty' ? 'An issue with no eligible articles still offers all three folders. Each opens a successful empty result.' : 'After: choose a folder. Try Unlistened, complete the active article, then open Listened. Every folder keeps the same whole-issue fraction.';
+        el('explanation').textContent = scenario() === 'unknown' ? 'Cached rows remain usable. Complete membership can be rebuilt when metadata is available.' : 'The fraction comes from eligible issue membership and durable completion history, independent of the selected folder and page.';
+        el('articles').replaceChildren();
+        if (!rows.length) {
+          const empty = document.createElement('p');
+          empty.className = 'empty'; empty.textContent = 'No articles in this view.';
+          el('articles').append(empty);
+        }
+        rows.slice(page * pageSize, (page + 1) * pageSize).forEach(article => {
+          const row = document.createElement('div'); row.className = 'article';
+          row.dataset.articleId = String(article.id);
+          const title = document.createElement('strong'); title.textContent = article.title;
+          const subtitle = document.createElement('small');
+          subtitle.textContent = `${article.listened ? 'Listened · ' : ''}${article.minutes} min · Fictional article`;
+          row.append(title, subtitle);
+          if (article.id === activeId) {
+            const tag = document.createElement('span'); tag.className = 'active-label'; tag.textContent = 'NOW PLAYING'; row.append(tag);
+          }
+          el('articles').append(row);
+        });
+        el('page-label').textContent = rows.length ? `${page * pageSize + 1}–${Math.min((page + 1) * pageSize, rows.length)} of ${rows.length} rows` : '0 rows · successful empty result';
+        el('previous').disabled = page === 0;
+        el('next').disabled = (page + 1) * pageSize >= rows.length;
+        const playing = active();
+        el('playing-title').textContent = playing ? playing.title : 'No active article';
+        el('playing-state').textContent = playing ? 'Simulated playback · same article and position' : 'Browsing stays silent';
+        el('playing-position').textContent = playing ? '12:00 / 1.5×' : '—';
+        el('finish').disabled = !after || !playing || playing.listened;
+        el('replay').disabled = !after || !playing || !playing.listened;
+      }
+      document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
+        filter = button.dataset.filter; page = 0; render();
+      }));
+      el('before').addEventListener('click', () => { after = false; page = 0; render(); });
+      el('after').addEventListener('click', () => { after = true; page = 0; render(); });
+      el('previous').addEventListener('click', () => { page--; render(); });
+      el('next').addEventListener('click', () => { page++; render(); });
+      el('finish').addEventListener('click', () => {
+        const playing = active(); if (!playing || playing.listened) return;
+        playing.listened = true;
+        el('event').textContent = 'Completion recorded. Unlistened loses one row; Listened gains one. The simulated player keeps its article, position, and speed.';
+        render();
+      });
+      el('replay').addEventListener('click', () => {
+        el('event').textContent = 'Replay retains the listened status and whole-issue count. Playback is simulated; no audio is loaded.'; render();
+      });
+      el('scenario').addEventListener('change', reset);
+      el('reset').addEventListener('click', reset);
+      reset();
+    })();
+  </script>
+</body>
+</html>
