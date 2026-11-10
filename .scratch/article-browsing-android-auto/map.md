@@ -4,6 +4,8 @@
 
 The [canonical spec](spec.md) defines delivery order and acceptance gates.
 Ticket 01's standalone latest-build verification was skipped at the user's request.
+[Ticket 04](issues/04-car-browse-filters.md) is implemented and awaiting review;
+its ticket 03 dependency is resolved.
 
 ## Decisions-so-far
 
@@ -16,6 +18,7 @@ Ticket 01's standalone latest-build verification was skipped at the user's reque
 
 ## Fog
 
-- Ticket 04 still needs car filter folders and article-list summary placement.
+- Ticket 04's folder navigation, heading visibility, and uninterrupted playback
+  during live completion still need DHU/car acceptance.
 - DHU/car fraction visibility and live refresh acceptance remain unverified.
 - Immediate cold-install counts across every heading would need a backend contract.

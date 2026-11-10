@@ -5,6 +5,7 @@ import com.rombs.newyorkeraudio.data.repository.FakeNewYorkerRepository
 import com.rombs.newyorkeraudio.data.repository.NewYorkerRepository
 import com.rombs.newyorkeraudio.domain.model.Article
 import com.rombs.newyorkeraudio.domain.model.Magazine
+import com.rombs.newyorkeraudio.playback.ArticleListenFilter
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -62,6 +63,160 @@ class CatalogLibraryTest {
         assertEquals(0, repository.issueCalls + repository.articleCalls)
     }
 
+    @Test(timeout = 5000) fun `opening an issue offers three nonplayable filters with shared progress`() = exercise { scope ->
+        val repository = Repository().apply {
+            articleList = listOf(article, article.copy(id = article.id + "-second"))
+        }
+        val catalog = CatalogLibrary(repository, scope, Storage(), initialListenedIds = setOf(article.id))
+        val folders = catalog.children(issueMediaId(date), 0, Int.MAX_VALUE)
+        assertEquals(listOf("All · 1/2 listened", "Unlistened · 1/2 listened", "Listened · 1/2 listened"),
+            folders.map { it.displayTitle })
+        assertTrue(folders.all { it.browsable && !it.playable })
+        assertEquals(3, folders.map { it.id }.distinct().size)
+        assertEquals(folders, folders.map { catalog.item(it.id) })
+        assertEquals(listOf(folders[1]), catalog.children(issueMediaId(date), 1, 1))
+    }
+
+    @Test(timeout = 5000) fun `filters use eligible history membership before paging and keep article identity`() = exercise { scope ->
+        val second = article.copy(id = article.id + "-second", audioAvailable = null)
+        val third = article.copy(id = article.id + "-third")
+        val fourth = article.copy(id = article.id + "-fourth")
+        val absent = article.copy(id = article.id + "-absent", audioAvailable = false)
+        val repository = Repository().apply { articleList = listOf(article, absent, second, third, fourth, article) }
+        val catalog = CatalogLibrary(repository, scope, Storage(), initialListenedIds = setOf(article.id, third.id, absent.id))
+        val all = issueFilterMediaId(date, ArticleListenFilter.ALL)
+        val unlistened = issueFilterMediaId(date, ArticleListenFilter.UNLISTENED)
+        val listened = issueFilterMediaId(date, ArticleListenFilter.LISTENED)
+        assertEquals(listOf(article.id, second.id, third.id, fourth.id), catalog.children(all, 0, 100).map { it.id })
+        assertEquals(listOf(second.id), catalog.children(unlistened, 0, 1).map { it.id })
+        assertEquals(listOf(fourth.id), catalog.children(unlistened, 1, 1).map { it.id })
+        assertTrue(catalog.children(unlistened, 2, 1).isEmpty())
+        assertEquals(listOf(article.id, third.id), catalog.children(listened, 0, Int.MAX_VALUE).map { it.id })
+        assertTrue(catalog.children(all, Int.MAX_VALUE, Int.MAX_VALUE).isEmpty())
+        val node = catalog.children(listened, 0, 1).single()
+        assertEquals(article.title, node.title)
+        assertEquals(article.author, node.author)
+        assertEquals(article.imageUrl, node.artworkUrl)
+        assertEquals(article.audio!!.durationMs, node.durationMs)
+        assertTrue(node.playable && !node.browsable)
+        assertEquals(listOf("All · 2/4 listened", "Unlistened · 2/4 listened", "Listened · 2/4 listened"),
+            catalog.children(issueMediaId(date), 0, 3).map { it.displayTitle })
+    }
+
+    @Test(timeout = 5000) fun `completion refreshes each filter count and all affected folder summaries`() = exercise { scope ->
+        val otherDate = "2026-10-05"
+        val second = article.copy(id = article.id + "-second")
+        val third = article.copy(id = article.id + "-third")
+        val repository = Repository().apply {
+            issueList = listOf(issue, issue.copy(id = otherDate, date = otherDate))
+            articleList = listOf(article, second, third)
+        }
+        val catalog = CatalogLibrary(repository, scope, Storage())
+        catalog.children(LIBRARY_ISSUES_ID, 0, 100)
+        catalog.children(issueMediaId(date), 0, 3)
+        catalog.children(issueMediaId(otherDate), 0, 3)
+        val changes = mutableListOf<CatalogChange>()
+        val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { catalog.changes.collect { changes.add(it) } }
+        try {
+            catalog.listeningHistoryChanged(setOf(article.id, second.id))
+            yield()
+            val expected = mapOf(
+                LIBRARY_ISSUES_ID to 2,
+                issueMediaId(date) to 3,
+                issueFilterMediaId(date, ArticleListenFilter.ALL) to 3,
+                issueFilterMediaId(date, ArticleListenFilter.UNLISTENED) to 1,
+                issueFilterMediaId(date, ArticleListenFilter.LISTENED) to 2,
+                issueMediaId(otherDate) to 3,
+                issueFilterMediaId(otherDate, ArticleListenFilter.ALL) to 3,
+                issueFilterMediaId(otherDate, ArticleListenFilter.UNLISTENED) to 1,
+                issueFilterMediaId(otherDate, ArticleListenFilter.LISTENED) to 2,
+            )
+            assertEquals(expected, changes.associate { it.parentId to it.count })
+            for (day in listOf(date, otherDate)) {
+                assertEquals("2/3 listened", catalog.item(issueMediaId(day)).displayDescription)
+                assertTrue(catalog.children(issueMediaId(day), 0, 3).all { it.issueProgress == IssueListeningSummary(2, 3) })
+                assertEquals(listOf(third.id), catalog.children(issueFilterMediaId(day, ArticleListenFilter.UNLISTENED), 0, 100).map { it.id })
+            }
+            changes.clear()
+            catalog.listeningHistoryChanged(setOf(second.id, article.id))
+            yield()
+            assertTrue(changes.isEmpty())
+        } finally { collector.cancel() }
+    }
+
+    @Test(timeout = 5000) fun `article artwork refresh reaches filtered parents with their own counts`() = exercise { scope ->
+        val catalog = CatalogLibrary(Repository(), scope, Storage(), initialListenedIds = setOf(article.id))
+        catalog.children(issueMediaId(date), 0, 3)
+        val changes = mutableListOf<CatalogChange>()
+        val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { catalog.changes.collect { changes.add(it) } }
+        try {
+            catalog.artworkChanged(article.imageUrl!!)
+            yield()
+            assertEquals(mapOf(
+                issueMediaId(date) to 3,
+                issueFilterMediaId(date, ArticleListenFilter.ALL) to 1,
+                issueFilterMediaId(date, ArticleListenFilter.UNLISTENED) to 0,
+                issueFilterMediaId(date, ArticleListenFilter.LISTENED) to 1,
+            ), changes.associate { it.parentId to it.count })
+        } finally { collector.cancel() }
+    }
+
+    @Test(timeout = 5000) fun `invalid filter folders and pages fail without fetching metadata`() = exercise { scope ->
+        val repository = Repository()
+        val catalog = CatalogLibrary(repository, scope, Storage())
+        val invalid = listOf("ny:filter:bad:ALL", "ny:filter:2026-02-30:ALL",
+            "ny:filter:$date:OTHER", "ny:filter:$date", "ny:filter:$date:ALL:extra", "ny:filter:$date:")
+        for (id in invalid) {
+            try { catalog.children(id, 0, 100); fail("Accepted $id") }
+            catch (_: IllegalArgumentException) {} catch (_: java.time.DateTimeException) {}
+            try { catalog.item(id); fail("Accepted $id") }
+            catch (_: IllegalArgumentException) {} catch (_: java.time.DateTimeException) {}
+        }
+        for ((page, size) in listOf(-1 to 1, 0 to 0)) {
+            try { catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), page, size); fail("Accepted invalid page") }
+            catch (_: IllegalArgumentException) {}
+        }
+        assertEquals(0, repository.issueCalls + repository.articleCalls)
+    }
+
+    @Test(timeout = 5000) fun `empty filter results are successful while an uncached metadata failure remains an error`() = exercise { scope ->
+        val repository = Repository().apply { failure = java.io.IOException("Offline") }
+        val catalog = CatalogLibrary(repository, scope, Storage())
+        val listened = issueFilterMediaId(date, ArticleListenFilter.LISTENED)
+        try { catalog.children(listened, 0, 100); fail("Expected load failure") } catch (_: java.io.IOException) {}
+        repository.failure = null
+        assertTrue(catalog.children(listened, 0, 100).isEmpty())
+        assertEquals("Listened · 0/1 listened", catalog.item(listened).displayTitle)
+        val empty = CatalogLibrary(Repository().apply { articleList = listOf(article.copy(audioAvailable = false)) }, scope, Storage())
+        assertEquals(listOf("All · 0/0 listened", "Unlistened · 0/0 listened", "Listened · 0/0 listened"),
+            empty.children(issueMediaId(date), 0, 3).map { it.displayTitle })
+        for (filter in ArticleListenFilter.entries) assertTrue(empty.children(issueFilterMediaId(date, filter), 0, 100).isEmpty())
+    }
+
+    @Test(timeout = 5000) fun `offline restart restores filter identities and results without inventing legacy progress`() = exercise { scope ->
+        val repository = Repository().apply { articleList = listOf(article, article.copy(id = article.id + "-second")) }
+        val storage = Storage()
+        val catalog = CatalogLibrary(repository, scope, storage) { 1000 }
+        catalog.children(LIBRARY_ISSUES_ID, 0, 100)
+        val original = catalog.children(issueMediaId(date), 0, 3)
+        repository.failure = java.io.IOException("Offline")
+        val restored = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(article.id)) { 400_000 }
+        val folders = restored.children(issueMediaId(date), 0, 3)
+        assertEquals(original.map { it.id }, folders.map { it.id })
+        assertEquals(listOf("All · 1/2 listened", "Unlistened · 1/2 listened", "Listened · 1/2 listened"),
+            folders.map { it.displayTitle })
+        assertEquals(listOf(article.id + "-second"), restored.children(folders[1].id, 0, 100).map { it.id })
+        assertEquals(listOf(article.id), restored.children(folders[2].id, 0, 100).map { it.id })
+        val saved = Json.parseToJsonElement(storage.value!!).jsonObject
+        val legacy = Storage(JsonObject((saved - "issueMembership") + ("version" to JsonPrimitive(1))).toString())
+        val unknown = CatalogLibrary(repository, scope, legacy, initialListenedIds = setOf(article.id)) { 400_000 }
+        val unavailable = unknown.children(issueMediaId(date), 0, 3)
+        assertEquals(listOf("All", "Unlistened", "Listened"), unavailable.map { it.displayTitle })
+        assertTrue(unavailable.all { it.issueProgress == null && it.displayDescription == "Progress unavailable" })
+        assertEquals(unavailable, unavailable.map { unknown.item(it.id) })
+        assertEquals(listOf(article.id), unknown.children(unavailable[2].id, 0, 100).map { it.id })
+    }
+
     @Test(timeout = 5000) fun `issues are newest first with stable pagination`() = exercise { scope ->
         val repository = Repository().apply { issueList = listOf(issue.copy(id = "2026-10-05", date = "2026-10-05"), issue) }
         val catalog = CatalogLibrary(repository, scope, Storage())
@@ -74,7 +229,7 @@ class CatalogLibraryTest {
         val repository = Repository().apply { articleList = listOf(article,
             article.copy(id = article.id + "-unknown", audioAvailable = null), article.copy(id = article.id + "-none", audio = null, audioAvailable = false)) }
         val catalog = CatalogLibrary(repository, scope, Storage())
-        val nodes = catalog.children(issueMediaId(date), 0, 100)
+        val nodes = catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         assertEquals(2, nodes.size)
         assertTrue(nodes.all { it.playable && !it.browsable })
         assertEquals(article.id, nodes.first().id)
@@ -104,13 +259,13 @@ class CatalogLibraryTest {
         val storage = Storage()
         val catalog = CatalogLibrary(repository, scope, storage) { 1000 }
         catalog.children(LIBRARY_ISSUES_ID, 0, 100)
-        catalog.children(issueMediaId(date), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         assertFalse(storage.value!!.contains(article.audio!!.audioUrl!!))
         repository.failure = IllegalStateException("Offline")
         val restored = CatalogLibrary(repository, scope, storage) { 2000 }
         assertEquals(issueMediaId(date), restored.children(LIBRARY_ISSUES_ID, 0, 100).single().id)
         assertEquals(article.title, restored.item(article.id).title)
-        assertEquals(article.id, restored.children(issueMediaId(date), 0, 100).single().id)
+        assertEquals(article.id, restored.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single().id)
         assertEquals(1, repository.issueCalls)
         assertEquals(1, repository.articleCalls)
     }
@@ -151,10 +306,10 @@ class CatalogLibraryTest {
     @Test(timeout = 5000) fun `resolved absence updates the car list and persists`() = exercise { scope ->
         val storage = Storage()
         val catalog = CatalogLibrary(Repository(), scope, storage) { 1000 }
-        catalog.children(issueMediaId(date), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         catalog.updateArticle(article.copy(audio = null, audioAvailable = false))
-        assertTrue(catalog.children(issueMediaId(date), 0, 100).isEmpty())
-        assertTrue(CatalogLibrary(Repository(), scope, storage) { 1000 }.children(issueMediaId(date), 0, 100).isEmpty())
+        assertTrue(catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).isEmpty())
+        assertTrue(CatalogLibrary(Repository(), scope, storage) { 1000 }.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).isEmpty())
     }
 
     @Test fun `page limits reject invalid input and avoid overflow`() {
@@ -170,22 +325,26 @@ class CatalogLibraryTest {
         val repository = Repository()
         val storage = Storage()
         val catalog = CatalogLibrary(repository, scope, storage) { now }
-        catalog.children(issueMediaId(date), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         catalog.updateArticle(article.copy(audio = null, audioAvailable = false))
         now += 300_001
         repository.articleList = listOf(article.copy(title = "Updated title", audio = null, audioAvailable = null))
-        val refreshed = scope.async(start = CoroutineStart.UNDISPATCHED) { catalog.changes.first() }
-        assertTrue(catalog.children(issueMediaId(date), 0, 100).isEmpty())
+        val refreshed = scope.async(start = CoroutineStart.UNDISPATCHED) {
+            catalog.changes.first { it.parentId == issueFilterMediaId(date, ArticleListenFilter.ALL) }
+        }
+        assertTrue(catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).isEmpty())
         assertEquals(0, withTimeout(2000) { refreshed.await() }.count)
         assertFalse(catalog.item(article.id).playable)
         assertEquals("Updated title", catalog.item(article.id).title)
-        assertTrue(CatalogLibrary(repository, scope, storage) { now }.children(issueMediaId(date), 0, 100).isEmpty())
+        assertTrue(CatalogLibrary(repository, scope, storage) { now }.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).isEmpty())
         now += 300_001
         repository.articleList = listOf(article.copy(audioAvailable = true))
-        val available = scope.async(start = CoroutineStart.UNDISPATCHED) { catalog.changes.first() }
-        assertTrue(catalog.children(issueMediaId(date), 0, 100).isEmpty())
+        val available = scope.async(start = CoroutineStart.UNDISPATCHED) {
+            catalog.changes.first { it.parentId == issueFilterMediaId(date, ArticleListenFilter.ALL) }
+        }
+        assertTrue(catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).isEmpty())
         assertEquals(1, withTimeout(2000) { available.await() }.count)
-        assertEquals(article.id, catalog.children(issueMediaId(date), 0, 100).single().id)
+        assertEquals(article.id, catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single().id)
     }
 
     @Test(timeout = 5000) fun `malformed folders do not fetch and corrupt storage is discarded`() = exercise { scope ->
@@ -202,22 +361,22 @@ class CatalogLibraryTest {
             val repository = Repository()
             val storage = Storage()
             val catalog = CatalogLibrary(repository, scope, storage) { now }
-            val initial = catalog.children(issueMediaId(date), 0, 100).single()
+            val initial = catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single()
             assertEquals(article.audio!!.durationMs, initial.durationMs)
             now += 300_001
             repository.articleList = listOf(article.copy(title = "Updated title", description = "Updated description",
                 audioAvailable = availability, audio = com.rombs.newyorkeraudio.domain.model.AudioInfo(null, null)))
             val event = scope.async(start = CoroutineStart.UNDISPATCHED) { catalog.changes.first() }
-            catalog.children(issueMediaId(date), 0, 100)
+            catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
             withTimeout(2000) { event.await() }
-            val updated = catalog.children(issueMediaId(date), 0, 100).single()
+            val updated = catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single()
             assertEquals("Updated title", updated.title)
             assertEquals("27 min · Updated description", updated.displayDescription)
             assertEquals("Listened · 27 min · Updated description", updated.copy(completed = true).displayDescription)
             assertEquals(article.audio!!.durationMs, catalog.item(article.id).durationMs)
             assertNull(catalog.cachedArticle(article.id)!!.audio!!.audioUrl)
             val restored = CatalogLibrary(repository, scope, storage) { now }
-            assertEquals(updated, restored.children(issueMediaId(date), 0, 100).single())
+            assertEquals(updated, restored.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single())
             assertEquals(2, repository.articleCalls)
         }
     }
@@ -229,7 +388,7 @@ class CatalogLibraryTest {
                     audio = article.audio!!.copy(durationMs = duration))
             }
         }
-        val nodes = CatalogLibrary(repository, scope, Storage()).children(issueMediaId(date), 0, 100)
+        val nodes = CatalogLibrary(repository, scope, Storage()).children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         assertEquals(listOf(null, null, null, "1 min"), nodes.map { it.displayDescription })
         assertEquals(listOf("Listened", "Listened", "Listened", "Listened · 1 min"),
             nodes.map { it.copy(completed = true).displayDescription })
@@ -243,7 +402,7 @@ class CatalogLibraryTest {
         }
         val catalog = CatalogLibrary(repository, scope, Storage())
         assertEquals("Progress unavailable", catalog.item(issueMediaId(date)).displayDescription)
-        catalog.children(issueMediaId(date), 0, 1)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 1)
         val node = catalog.item(issueMediaId(date))
         assertEquals(issue.title, node.title)
         assertEquals("0/2 listened", node.displayDescription)
@@ -258,13 +417,15 @@ class CatalogLibraryTest {
         }
         val catalog = CatalogLibrary(repository, scope, Storage())
         catalog.children(LIBRARY_ISSUES_ID, 0, 100)
-        catalog.children(issueMediaId(date), 0, 100)
-        catalog.children(issueMediaId(otherDate), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
+        catalog.children(issueFilterMediaId(otherDate, ArticleListenFilter.ALL), 0, 100)
         val changes = mutableListOf<CatalogChange>()
         val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { catalog.changes.collect { changes.add(it) } }
         catalog.listeningHistoryChanged(setOf(article.id, second.id, article.id + "-unrelated"))
         yield()
-        assertEquals(setOf(LIBRARY_ISSUES_ID, issueMediaId(date), issueMediaId(otherDate)), changes.map { it.parentId }.toSet())
+        assertEquals(setOf(LIBRARY_ISSUES_ID, issueMediaId(date), issueMediaId(otherDate)) +
+            listOf(date, otherDate).flatMap { day -> ArticleListenFilter.entries.map { issueFilterMediaId(day, it) } },
+            changes.map { it.parentId }.toSet())
         assertEquals("2/2 listened", catalog.item(issueMediaId(date)).displayDescription)
         assertEquals("2/2 listened", catalog.item(issueMediaId(otherDate)).displayDescription)
         changes.clear()
@@ -287,20 +448,22 @@ class CatalogLibraryTest {
         val storage = Storage()
         val catalog = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(completed.id)) { 1000 }
         catalog.children(LIBRARY_ISSUES_ID, 0, 1)
-        for (heading in repository.issueList) catalog.children(issueMediaId(heading.id), 0, 100)
+        for (heading in repository.issueList) catalog.children(issueFilterMediaId(heading.id, ArticleListenFilter.ALL), 0, 100)
         assertNull(catalog.cachedArticle(completed.id))
         assertEquals("1/124 listened", catalog.item(issueMediaId(date)).displayDescription)
+        assertEquals("Unlistened · 1/124 listened", catalog.item(issueFilterMediaId(date, ArticleListenFilter.UNLISTENED)).displayTitle)
         assertFalse(storage.value!!.contains(article.audio!!.audioUrl!!))
         repository.failure = IllegalStateException("Offline")
         val restored = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(completed.id)) { 2000 }
         assertEquals("1/124 listened", restored.item(issueMediaId(date)).displayDescription)
+        assertEquals("Listened · 1/124 listened", restored.item(issueFilterMediaId(date, ArticleListenFilter.LISTENED)).displayTitle)
         restored.updateArticle(completed.copy(audio = null, audioAvailable = false))
         assertEquals("0/123 listened", restored.item(issueMediaId(date)).displayDescription)
         val again = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(completed.id)) { 2000 }
         assertEquals("0/123 listened", again.item(issueMediaId(date)).displayDescription)
         repository.failure = null
         val refreshed = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(completed.id)) { 400_000 }
-        refreshed.children(issueMediaId(date), 0, 100)
+        refreshed.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         assertEquals("0/123 listened", refreshed.item(issueMediaId(date)).displayDescription)
     }
 
@@ -309,7 +472,7 @@ class CatalogLibraryTest {
         val original = Storage()
         val catalog = CatalogLibrary(repository, scope, original) { 1000 }
         catalog.children(LIBRARY_ISSUES_ID, 0, 100)
-        catalog.children(issueMediaId(date), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         val saved = Json.parseToJsonElement(original.value!!).jsonObject
         val fixtures = listOf(
             JsonObject((saved - "issueMembership") + ("version" to JsonPrimitive(1))),
@@ -326,7 +489,7 @@ class CatalogLibraryTest {
             val rebuilt = scope.async(start = CoroutineStart.UNDISPATCHED) {
                 restored.changes.first { it.parentId == LIBRARY_ISSUES_ID }
             }
-            assertEquals(article.id, restored.children(issueMediaId(date), 0, 100).single().id)
+            assertEquals(article.id, restored.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single().id)
             withTimeout(2000) { rebuilt.await() }
             assertEquals("1/1 listened", restored.item(issueMediaId(date)).displayDescription)
         }
@@ -365,13 +528,13 @@ class CatalogLibraryTest {
         val repository = Repository()
         val catalog = CatalogLibrary(repository, scope, Storage()) { now }
         catalog.children(LIBRARY_ISSUES_ID, 0, 100)
-        catalog.children(issueMediaId(date), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         now += 300_001
         val gate = CompletableDeferred<Unit>()
         repository.articleGate = gate
         repository.articleList = listOf(article.copy(title = "Updated title", audioAvailable = true))
         try {
-            catalog.children(issueMediaId(date), 0, 100)
+            catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
             withTimeout(1000) { while (repository.articleCalls < 2) yield() }
             catalog.updateArticle(article.copy(audio = null, audioAvailable = false))
             val refreshed = scope.async(start = CoroutineStart.UNDISPATCHED) {
@@ -379,7 +542,7 @@ class CatalogLibraryTest {
             }
             gate.complete(Unit)
             withTimeout(2000) { refreshed.await() }
-            assertTrue(catalog.children(issueMediaId(date), 0, 100).isEmpty())
+            assertTrue(catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).isEmpty())
             assertEquals("Updated title", catalog.item(article.id).title)
             assertEquals("0/0 listened", catalog.item(issueMediaId(date)).displayDescription)
         } finally { gate.complete(Unit) }
@@ -395,7 +558,7 @@ class CatalogLibraryTest {
         val storage = Storage()
         val catalog = CatalogLibrary(repository, scope, storage) { 1000 }
         catalog.children(LIBRARY_ISSUES_ID, 0, 1)
-        for (heading in repository.issueList) catalog.children(issueMediaId(heading.id), 0, 100)
+        for (heading in repository.issueList) catalog.children(issueFilterMediaId(heading.id, ArticleListenFilter.ALL), 0, 100)
         repository.failure = IllegalStateException("Offline")
         val restored = CatalogLibrary(repository, scope, storage) { 2000 }
         assertTrue(restored.children(LIBRARY_ISSUES_ID, 0, Int.MAX_VALUE).all { it.displayDescription == "0/1 listened" })
@@ -407,12 +570,12 @@ class CatalogLibraryTest {
                 changes.add(it)
                 // A notification consumer can read the catalog without blocking its writer.
                 if (it.parentId != LIBRARY_ISSUES_ID) assertEquals("1/1 listened", restored.item(it.parentId).displayDescription)
-                if (changes.size == 201) received.complete(Unit)
+                if (changes.size == 801) received.complete(Unit)
             }
         }
         restored.listeningHistoryChanged(setOf(article.id))
         withTimeout(3000) { received.await() }
-        assertEquals(200, changes.count { it.parentId != LIBRARY_ISSUES_ID })
+        assertEquals(800, changes.count { it.parentId != LIBRARY_ISSUES_ID })
         assertEquals(200, changes.single { it.parentId == LIBRARY_ISSUES_ID }.count)
         collector.cancel()
     }
@@ -427,7 +590,7 @@ class CatalogLibraryTest {
         }
         val catalog = CatalogLibrary(repository, scope, Storage(), initialListenedIds = setOf(article.id)) { now }
         catalog.children(LIBRARY_ISSUES_ID, 0, 1)
-        for (heading in repository.issueList) catalog.children(issueMediaId(heading.id), 0, 100)
+        for (heading in repository.issueList) catalog.children(issueFilterMediaId(heading.id, ArticleListenFilter.ALL), 0, 100)
         assertEquals("1/1 listened", catalog.item(issueMediaId(date)).displayDescription)
         now += 300_001
         repository.articleList = listOf(article.copy(audio = null, audioAvailable = false))
@@ -437,13 +600,14 @@ class CatalogLibraryTest {
         val refreshed = scope.async(start = CoroutineStart.UNDISPATCHED) {
             catalog.changes.first { it.parentId == issueMediaId(refreshedDate) }
         }
-        catalog.children(issueMediaId(refreshedDate), 0, 100)
+        catalog.children(issueFilterMediaId(refreshedDate, ArticleListenFilter.ALL), 0, 100)
         withTimeout(2000) { refreshed.await() }
         assertEquals("0/0 listened", catalog.item(issueMediaId(date)).displayDescription)
         assertEquals("0/0 listened", catalog.item(issueMediaId(refreshedDate)).displayDescription)
-        assertTrue(catalog.children(issueMediaId(repository.issueList[1].id), 0, 100).isEmpty())
-        withTimeout(2000) { while (events.map { it.parentId }.toSet().size < 26) yield() }
-        assertTrue(events.filter { it.parentId != LIBRARY_ISSUES_ID }.all { it.count == 0 })
+        assertTrue(catalog.children(issueFilterMediaId(repository.issueList[1].id, ArticleListenFilter.ALL), 0, 100).isEmpty())
+        withTimeout(2000) { while (events.map { it.parentId }.toSet().size < 101) yield() }
+        assertTrue(events.filter { it.parentId.startsWith("ny:filter:") }.all { it.count == 0 })
+        assertTrue(events.filter { it.parentId.startsWith("ny:issue:") }.all { it.count == 3 })
         collector.cancel()
     }
 
@@ -452,7 +616,7 @@ class CatalogLibraryTest {
         val storage = Storage()
         val catalog = CatalogLibrary(repository, scope, storage) { 1000 }
         catalog.children(LIBRARY_ISSUES_ID, 0, 100)
-        catalog.children(issueMediaId(date), 0, 100)
+        catalog.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100)
         val saved = Json.parseToJsonElement(storage.value!!).jsonObject
         storage.value = JsonObject((saved - "issueMembership") + ("version" to JsonPrimitive(1))).toString()
         repository.failure = IllegalStateException("Offline")
@@ -461,10 +625,15 @@ class CatalogLibraryTest {
         val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) { restored.changes.collect { events.add(it) } }
         restored.listeningHistoryChanged(setOf(article.id))
         yield()
-        assertEquals(setOf(issueMediaId(date), LIBRARY_ISSUES_ID), events.map { it.parentId }.toSet())
-        assertEquals(1, events.single { it.parentId == issueMediaId(date) }.count)
+        assertEquals(mapOf(
+            LIBRARY_ISSUES_ID to 1,
+            issueMediaId(date) to 3,
+            issueFilterMediaId(date, ArticleListenFilter.ALL) to 1,
+            issueFilterMediaId(date, ArticleListenFilter.UNLISTENED) to 0,
+            issueFilterMediaId(date, ArticleListenFilter.LISTENED) to 1,
+        ), events.associate { it.parentId to it.count })
         assertEquals("Progress unavailable", restored.item(issueMediaId(date)).displayDescription)
-        assertEquals(article.id, restored.children(issueMediaId(date), 0, 100).single().id)
+        assertEquals(article.id, restored.children(issueFilterMediaId(date, ArticleListenFilter.ALL), 0, 100).single().id)
         collector.cancel()
     }
 

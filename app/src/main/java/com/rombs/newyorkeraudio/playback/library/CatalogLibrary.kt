@@ -5,6 +5,8 @@ import com.rombs.newyorkeraudio.data.repository.canonicalArticleUrl
 import com.rombs.newyorkeraudio.data.repository.mergeCachedNarration
 import com.rombs.newyorkeraudio.domain.model.Article
 import com.rombs.newyorkeraudio.domain.model.Magazine
+import com.rombs.newyorkeraudio.playback.ArticleListenFilter
+import com.rombs.newyorkeraudio.playback.filterListenedArticles
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -33,6 +35,7 @@ const val LIBRARY_ROOT_ID = "ny:root"
 const val LIBRARY_ISSUES_ID = "ny:issues"
 const val LIBRARY_CONTINUE_ID = "ny:continue"
 private const val ISSUE_PREFIX = "ny:issue:"
+private const val FILTER_PREFIX = "ny:filter:"
 private const val FRESHNESS_MS = 5 * 60_000L
 private const val MAX_ISSUES = 200
 private const val MAX_CACHED_ISSUES = 24
@@ -41,6 +44,24 @@ private const val HYDRATION_BATCH_SIZE = 2
 private const val MAX_PAGE_HYDRATION = 10
 
 fun issueMediaId(date: String): String = ISSUE_PREFIX + validIssueDate(date)
+fun issueFilterMediaId(date: String, filter: ArticleListenFilter): String =
+    "$FILTER_PREFIX${validIssueDate(date)}:${filter.name}"
+
+private data class IssueFilterFolder(val date: String, val filter: ArticleListenFilter) {
+    val id: String get() = issueFilterMediaId(date, filter)
+    val title: String get() = when (filter) {
+        ArticleListenFilter.ALL -> "All"
+        ArticleListenFilter.UNLISTENED -> "Unlistened"
+        ArticleListenFilter.LISTENED -> "Listened"
+    }
+}
+
+private fun parseFilterFolder(id: String): IssueFilterFolder {
+    val parts = id.removePrefix(FILTER_PREFIX).split(':')
+    require(parts.size == 2) { "Invalid filter folder" }
+    return IssueFilterFolder(validIssueDate(parts[0]), ArticleListenFilter.valueOf(parts[1]))
+}
+
 private fun validIssueDate(date: String): String {
     require(LocalDate.parse(date).toString() == date)
     return date
@@ -121,8 +142,16 @@ class CatalogLibrary(
                 hydrateLater((issues.take(5) + libraryPage(issues, page, pageSize).take(MAX_PAGE_HYDRATION)).map { it.id })
                 mutex.withLock { issues.map { it.toNode(summary(it.id)) } }
             }
-            parentId.startsWith(ISSUE_PREFIX) -> articles(validIssueDate(parentId.removePrefix(ISSUE_PREFIX)))
-                .filter { it.audioAvailable != false }.map { it.toNode() }
+            parentId.startsWith(FILTER_PREFIX) -> {
+                val folder = parseFilterFolder(parentId)
+                val articles = articles(folder.date).filter { it.audioAvailable != false }
+                mutex.withLock { filterListenedArticles(articles, listenedIds, folder.filter).map { it.toNode() } }
+            }
+            parentId.startsWith(ISSUE_PREFIX) -> {
+                val date = validIssueDate(parentId.removePrefix(ISSUE_PREFIX))
+                articles(date)
+                mutex.withLock { ArticleListenFilter.entries.map { filterNode(IssueFilterFolder(date, it)) } }
+            }
             else -> throw NoSuchElementException("Unknown library folder")
         }
         return libraryPage(nodes, page, pageSize)
@@ -132,6 +161,11 @@ class CatalogLibrary(
         id == LIBRARY_ROOT_ID -> libraryRoot()
         id == LIBRARY_ISSUES_ID -> issuesFolder()
         id == LIBRARY_CONTINUE_ID -> continueFolder()
+        id.startsWith(FILTER_PREFIX) -> {
+            val folder = parseFilterFolder(id)
+            require(issues().any { it.id == folder.date }) { "Unknown issue" }
+            mutex.withLock { filterNode(folder) }
+        }
         id.startsWith(ISSUE_PREFIX) -> {
             val date = validIssueDate(id.removePrefix(ISSUE_PREFIX))
             val issue = issues().firstOrNull { it.id == date } ?: throw NoSuchElementException("Unknown issue")
@@ -146,6 +180,13 @@ class CatalogLibrary(
 
     suspend fun cachedArticle(id: String): Article? = mutex.withLock {
         snapshot.issueArticles.asReversed().firstNotNullOfOrNull { entry -> entry.articles.firstOrNull { it.id == id } }
+    }
+
+    /** Called under the mutex so every filter title uses the same whole-issue summary. */
+    private fun filterNode(folder: IssueFilterFolder): LibraryNode {
+        val progress = summary(folder.date)
+        return LibraryNode(folder.id, folder.title, issueProgress = progress,
+            description = if (progress == null) "Progress unavailable" else null)
     }
 
     /** Called under the catalog mutex so a page uses one membership/history snapshot. */
@@ -268,8 +309,7 @@ class CatalogLibrary(
                             snapshot = snapshot.copy(issueArticles = entries.takeLast(MAX_CACHED_ISSUES),
                                 issueMembership = retainMembership(snapshot.issueMembership.filterNot { it.date == date } + membership, snapshot.issues))
                             persist()
-                            listOf(CatalogChange(key, merged.take(MAX_ARTICLES_PER_ISSUE).count { it.audioAvailable != false })) +
-                                affected.map { CatalogChange(issueMediaId(it), browseCount(it)) } +
+                            issueChanges(date) + affected.flatMap { issueChanges(it) } +
                                 CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0)
                         }
                     }
@@ -302,7 +342,7 @@ class CatalogLibrary(
                 if (article.id in entry.articles) entry.copy(articles = entry.articles + (article.id to article.audioAvailable)) else entry
             })
             persist()
-            affected.map { CatalogChange(issueMediaId(it), browseCount(it)) } +
+            affected.flatMap { issueChanges(it) } +
                 CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0)
         }
         changes.forEach { mutableChanges.emit(it) }
@@ -314,16 +354,27 @@ class CatalogLibrary(
             listenedIds = ids.toSet()
             val affected = snapshot.issueMembership.filter { entry -> entry.articles.keys.any { it in changed } }.map { it.date }.toSet() +
                 snapshot.issueArticles.filter { entry -> entry.articles.any { it.id in changed } }.map { it.date }
-            if (affected.isEmpty()) emptyList() else affected.map { date ->
-                CatalogChange(issueMediaId(date), browseCount(date))
-            } + CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0)
+            if (affected.isEmpty()) emptyList() else affected.flatMap { issueChanges(it) } +
+                CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues?.size ?: 0)
         }
         changes.forEach { mutableChanges.emit(it) }
     }
 
-    private fun browseCount(date: String): Int = snapshot.issueMembership.firstOrNull { it.date == date }
-        ?.articles?.values?.take(MAX_ARTICLES_PER_ISSUE)?.count { it != false }
-        ?: snapshot.issueArticles.firstOrNull { it.date == date }?.articles?.count { it.audioAvailable != false } ?: 0
+    /** Match the bounded article detail list, while summaries still use complete membership. */
+    private fun issueChanges(date: String): List<CatalogChange> {
+        val members = snapshot.issueMembership.firstOrNull { it.date == date }?.articles?.entries
+            ?.take(MAX_ARTICLES_PER_ISSUE)?.associate { it.key to it.value }
+            ?: snapshot.issueArticles.firstOrNull { it.date == date }?.articles?.associate { it.id to it.audioAvailable }
+            ?: emptyMap()
+        val eligible = members.filterValues { it != false }.keys
+        val listened = eligible.count { it in listenedIds }
+        return listOf(
+            CatalogChange(issueMediaId(date), ArticleListenFilter.entries.size),
+            CatalogChange(issueFilterMediaId(date, ArticleListenFilter.ALL), eligible.size),
+            CatalogChange(issueFilterMediaId(date, ArticleListenFilter.UNLISTENED), eligible.size - listened),
+            CatalogChange(issueFilterMediaId(date, ArticleListenFilter.LISTENED), listened),
+        )
+    }
 
     /** Narration belongs to a canonical article, including when its issue details have been evicted. */
     private fun updateNarration(updates: Map<String, Article>): Set<String> {
@@ -356,14 +407,13 @@ class CatalogLibrary(
     }
 
     suspend fun artworkChanged(url: String) {
-        mutex.withLock {
-            if (snapshot.issues?.any { it.coverImageUrl == url } == true) {
-                mutableChanges.tryEmit(CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues!!.size))
-            }
-            snapshot.issueArticles.filter { entry -> entry.articles.any { it.imageUrl == url } }.forEach { entry ->
-                mutableChanges.tryEmit(CatalogChange(issueMediaId(entry.date), entry.articles.count { it.audioAvailable != false }))
-            }
+        val changes = mutex.withLock {
+            val headings = if (snapshot.issues?.any { it.coverImageUrl == url } == true)
+                listOf(CatalogChange(LIBRARY_ISSUES_ID, snapshot.issues!!.size)) else emptyList()
+            headings + snapshot.issueArticles.filter { entry -> entry.articles.any { it.imageUrl == url } }
+                .flatMap { issueChanges(it.date) }
         }
+        changes.forEach { mutableChanges.emit(it) }
     }
 
     /** Changing files is off the player's thread; the mutex preserves write order. */

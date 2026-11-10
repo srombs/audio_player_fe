@@ -142,9 +142,17 @@ refresh intent. Private selection commands are restricted to the application's U
 
 The manifest declares Android Auto media support and both Media3 library and
 platform browser discovery interfaces. The library now exposes Issues → issue
-heading → article, plus Continue Listening. Its local root is immediate; children and item lookup use
+heading → All / Unlistened / Listened → article, plus Continue Listening. Its local root is immediate; children and item lookup use
 metadata without resolving audio. Known unnarrated entries are excluded and
 unknown narration remains selectable.
+
+Filter folder titles carry the shared whole-issue progress, such as
+`Unlistened · 3/12 listened`. Filtering precedes pagination and uses durable
+listening history without changing the phone's saved filter. Completion updates
+the folder titles and each filtered list while the current article keeps playing.
+The existing 100-article browse cap applies; the summary counts complete issue
+membership. Folder/heading visibility and active-playback behavior still need
+DHU/car acceptance.
 
 The Issues folder requests a grid of magazine cover tiles in Android Auto.
 Article entries and Continue Listening request list presentation. These are host

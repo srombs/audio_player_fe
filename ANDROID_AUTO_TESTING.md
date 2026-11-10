@@ -1,7 +1,7 @@
 # Android Auto foundation test guide
 
 Steps 1–12 and step 13's lifecycle fixes/automated coverage are implemented.
-Main and instrumentation sources compile, all 178 JVM
+Main and instrumentation sources compile, all 185 JVM
 tests pass, the debug APK builds, and Android lint passes. The user confirmed DHU
 connection, issue browsing, and audio playback. Steps 7–13 need device regression
 validation; step 13's live lifecycle checks remain pending.
@@ -49,6 +49,14 @@ title and ID, including a long title.
 Review regressions also cover narration changes from browse metadata reaching
 all shared issues after detail eviction, and completion notifications for
 legacy cached article parents while exact membership remains unavailable offline.
+Ticket 04 adds catalog coverage for the All / Unlistened / Listened folder tree,
+filtering before pagination, invalid IDs/pages, empty results versus errors,
+offline restart and unavailable membership, artwork refresh, and filter-specific
+counts across shared issues and all 200 retained memberships. The new real-browser
+smoke case seeds a fresh fictional catalog through existing storage, checks folder
+metadata/lookup/errors, subscribes to the five affected parents, and checks
+completion notifications and unchanged session state. It does not start audio;
+completion while an article is actively playing remains a host acceptance check.
 
 With a phone or emulator connected, run the new device smoke tests:
 
@@ -72,6 +80,10 @@ unavailable next/previous-track commands.
 The service smoke suite also verifies that rejected searches finish and that
 disconnecting one controller leaves another bound controller usable without
 changing the active item or Play intent. These device tests have not run here.
+The ticket 04 cached-catalog smoke case temporarily replaces the persisted catalog
+and adds a synthetic completion. It restores both stores afterward; the synthetic
+entry remains in the application singleton until the test process exits. Run the
+suite in a test installation with playback stopped.
 
 ## Prepare the phone and Desktop Head Unit
 
@@ -103,14 +115,17 @@ for developer-mode and connection details.
 | Connection | The car connects while the phone activity is closed. |
 | Root | Issues and Continue Listening appear promptly; connecting does not start audio. |
 | Issue grid | Issues requests a grid of magazine covers, newest first. Loaded membership adds a fraction such as `3/12 listened` to the display title. Unloaded progress has no fraction and uses `Progress unavailable` in the subtitle where the host permits. Check long titles and live updates; the host controls columns and tile size. |
-| Articles | Selected issue shows article titles/descriptions and thumbnails. Known duration precedes descriptions; completed rows start with Listened, followed by known duration. Unknown durations are omitted. Known unnarrated articles are excluded. Android Auto controls description truncation. |
+| Filters | Selected issue shows All, Unlistened, Listened in that order. Each title carries the same whole-issue fraction, such as `Unlistened · 3/12 listened`. Check the extra navigation level with touch and rotary controls, plus actual heading visibility when opening each folder. |
+| Articles | Selected filter shows article titles/descriptions and thumbnails in source order. Known duration precedes descriptions; completed rows start with Listened, followed by known duration. Unknown durations are omitted. Known unnarrated articles are excluded. Android Auto controls description truncation. |
+| Filter completion | While playing an Unlistened article, complete it from phone or car. It leaves Unlistened, appears in Listened, and updates folder/magazine fractions. Playback, position, pause state, and speed continue normally. Replaying it keeps its listened status. |
 | Selection | Choosing a narrated article resolves its ID and starts playback. |
 | Metadata | Now Playing shows the selected title, author, and local artwork. |
 | Controls | Play/Pause and seeking work through the shared session. |
 | Phone closed | Press Home/Back on the phone; car playback and controls continue. |
 | Phone return | Opening the phone player shows the current car-selected article and progress. |
 | Cached browsing | After loading an issue, disconnect networking and reopen that issue. Cached metadata remains browsable. Streaming still needs its source/network. |
-| Empty vs unavailable | A genuinely empty issue produces an empty list. A cold catalog failure reports an error. |
+| Empty vs unavailable | An empty issue still offers three folders with `0/0 listened`. Empty filters return successful empty lists. Unknown membership uses `Progress unavailable` without a numeric fraction. A cold metadata failure reports an error with retry. |
+| Filter independence | Change car folders and confirm the phone's saved filter is unchanged. Search, Continue Listening, and recent items retain their own results. Reconnect and reopen all three folders with the phone backgrounded. |
 | Reconnect | Disconnect/reconnect the DHU; connection alone does not autoplay. |
 | Phone regression | Phone selection, pause, notification/lock-screen controls, progress restoration, and fresh-URL retry still work. |
 
