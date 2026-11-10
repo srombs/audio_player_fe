@@ -246,7 +246,7 @@ previews, including an error page with doubled text size on a small screen.
 
 ### Validation in the coding workspace
 
-- Normal Gradle main compilation, all 158 JVM tests, and instrumentation-source
+- Normal Gradle main compilation, all 178 JVM tests, and instrumentation-source
   compilation pass for the car library, selection, progress, resumption, and recovery changes.
 - Debug APK assembly and Android lint pass. Resources and the merged manifest
   are processed successfully by Gradle against SDK 36.

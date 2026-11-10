@@ -80,7 +80,8 @@ class PlaybackService : MediaLibraryService() {
     private var browseSequence = 0L
     private val repository get() = (application as NewYorkerAudioApplication).container.repository
     private val artwork get() = (application as NewYorkerAudioApplication).container.artworkCache
-    private val catalog by lazy { CatalogLibrary(repository, serviceScope, PreferencesCatalogStorage(this)) }
+    private val catalog by lazy { CatalogLibrary(repository, serviceScope, PreferencesCatalogStorage(this),
+        initialListenedIds = historyCache.entries.value.map { it.article.id }.toSet()) }
     private val access by lazy { ControllerAccessValidator(this) }
     private val handler = Handler(Looper.getMainLooper())
     private val progressCache get() = (application as NewYorkerAudioApplication).container.progressCache
@@ -172,7 +173,7 @@ class PlaybackService : MediaLibraryService() {
         }
         serviceScope.launch {
             historyCache.entries.collect { entries ->
-                entries.firstOrNull()?.let { catalog.completionChanged(it.article.id) }
+                catalog.listeningHistoryChanged(entries.map { it.article.id }.toSet())
                 session?.notifyChildrenChanged(RECENT_ROOT_ID, recentNodes().size, null)
                 notifyContinueChanged()
             }

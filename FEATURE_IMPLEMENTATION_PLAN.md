@@ -4,5 +4,6 @@ The canonical [implementation plan and spec](.scratch/article-browsing-android-a
 is tracked in the local Markdown issue tracker with `Status: ready-for-agent`.
 
 It covers FR-001 through FR-005. The user skipped the standalone latest-build
-verification ticket. Known-duration propagation and car labels are implemented;
-the remaining work and host acceptance are tracked in the spec.
+verification ticket. Known-duration propagation, car duration labels, and shared
+issue progress with magazine display fractions are implemented. Car filter
+folders, article-list summary placement, and host acceptance remain in the spec.

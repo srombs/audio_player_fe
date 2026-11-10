@@ -11,6 +11,24 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class MediaItemMapperTest {
+    @Test fun issueGridCarriesProgressInTitlesWhilePreservingIssueIdentity() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val artwork = com.rombs.newyorkeraudio.playback.artwork.ArtworkCache(context)
+        val title = "An issue with a very long title ".repeat(12)
+        val node = com.rombs.newyorkeraudio.playback.library.LibraryNode("ny:issue:2026-10-12", title,
+            issueProgress = com.rombs.newyorkeraudio.playback.library.IssueListeningSummary(3, 12))
+        val item = node.toLibraryMediaItem(artwork)
+        assertTrue(item.mediaMetadata.title.toString().endsWith(" · 3/12 listened"))
+        assertTrue(item.mediaMetadata.displayTitle.toString().endsWith(" · 3/12 listened"))
+        assertEquals(256, item.mediaMetadata.displayTitle!!.length)
+        assertEquals(title, node.title)
+        assertEquals("3/12 listened", item.mediaMetadata.subtitle.toString())
+        assertEquals(node.id, item.mediaId)
+        assertEquals(true, item.mediaMetadata.isBrowsable)
+        assertEquals(false, item.mediaMetadata.isPlayable)
+        assertNull(item.localConfiguration)
+    }
+
     @Test fun carBrowseSubtitleIncludesKnownDurationBeforeLongDescriptions() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val artwork = com.rombs.newyorkeraudio.playback.artwork.ArtworkCache(context)
