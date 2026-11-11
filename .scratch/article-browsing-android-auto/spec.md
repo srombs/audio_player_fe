@@ -234,7 +234,7 @@ tickets 02 through 05. Steps 6 and 7 remain planned.
 | 3 | Shared issue summaries, persistence, and updates, FR-002/FR-003 | Implemented in ticket 03: shared node summaries and magazine fractions survive refresh, completion, restart, and metadata eviction. Folder placement follows in ticket 04; host acceptance remains in step 7. |
 | 4 | Car browse folders, FR-004, plus article-list summary placement | Implemented in ticket 04: filter folders, shared summary titles, filtering before paging, and per-parent live counts. Host presentation and active-playback acceptance remain in step 7. |
 | 5 | Rewind compatibility, FR-005 | Implemented in ticket 05 and confirmed on DHU. The full rewind matrix remains in step 7. |
-| 6 | Backend summary duration contract and data availability, remaining FR-001 | Known durations are available before first playback where the backend has narration metadata; absent fields remain compatible. |
+| 6 | [Ticket 06](issues/06-consume-summary-durations.md) and backend summary duration coverage, remaining FR-001 | Known durations are available before first playback where the backend has narration metadata; absent fields remain compatible. |
 | 7 | Integration and host acceptance | Run relevant automated checks and the phone/DHU/car matrix; record any remaining host limitations. |
 
 ## Testing Decisions
