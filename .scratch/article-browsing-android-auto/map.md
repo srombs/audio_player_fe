@@ -4,6 +4,8 @@
 
 The [canonical spec](spec.md) defines delivery order and acceptance gates.
 Ticket 01's standalone latest-build verification was skipped at the user's request.
+[Ticket 06](issues/06-consume-summary-durations.md) records the duration API
+contract and Android implementation scope. Backend work belongs in `audio_player_be`.
 
 ## Decisions-so-far
 
