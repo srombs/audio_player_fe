@@ -10,8 +10,9 @@ shared summaries, persistent membership, magazine display fractions, and live
 updates. [Ticket 04: car browse filters](issues/04-car-browse-filters.md) implements
 the filter folders and article-list summary placement.
 [Ticket 05: Android Auto rewind](issues/05-android-auto-rewind.md) restores the
-15-second rewind button on DHU. Full host acceptance and the remaining feature
-work are pending.
+15-second rewind button on DHU. [Ticket 06: summary durations](issues/06-consume-summary-durations.md)
+consumes backend narration lengths before first playback. Full host acceptance
+remains pending.
 
 Source: [feature requests](../../FEATURE_REQUESTS.md), FR-001 through FR-005.
 The testing approach was confirmed: reuse existing interfaces and test coverage.
@@ -41,7 +42,7 @@ This table describes the repository and includes recorded host results where ava
 
 | Request | Current source | Remaining work after device verification |
 | --- | --- | --- |
-| FR-001: article duration on phone and car | Phone and car lists receive retained known duration after refresh. Car browse subtitles include duration before descriptions. Summary DTOs still have no duration field. | Verify host presentation during integration and add backend summary metadata for durations before first playback. |
+| FR-001: article duration on phone and car | Phone and car lists consume optional backend summary durations before first playback and retain known durations after refresh. Car browse subtitles include duration before descriptions. The deployed November 16 issue supplies durations for all 14 narrated articles. | Verify phone/DHU/car presentation during integration; historical duration coverage belongs to the backend. |
 | FR-002: issue progress inside car article browsing | Shared summaries are exposed on catalog issue nodes and filter-folder titles for the article-list heading. Article rows retain their existing listened labels. | Verify actual heading visibility on DHU/car during integration. |
 | FR-003: progress on car magazine entries | Magazine display titles include the shared listened/total count when membership is loaded. Cached counts survive eviction and restart. | Verify grid presentation on DHU/car during integration. |
 | FR-004: car listened filter | Car issues expose All / Unlistened / Listened folders using the phone's filter rules, with independent folder selection and per-filter live counts. | Verify navigation and live completion on DHU/car during integration. |
@@ -133,13 +134,13 @@ with known audio duration and one not yet resolved for playback.
 - Ensure car catalog refreshes preserve known duration even when the refreshed
   summary explicitly confirms narration but omits its duration. A confirmed
   absence of narration clears audio metadata.
-- Deliver cached/known-duration improvements first. Full coverage before first
-  playback depends on a backend metadata enhancement: propose optional
-  `duration_ms` on article summaries, carrying a positive narration duration
-  when known and otherwise null/absent. Keep older responses compatible.
-- Verify backend support during that implementation task; the current frontend
-  DTO alone does not establish what the deployed server supplies. The backend
-  change and any metadata backfill are separate deliverables.
+- Ticket 06 consumes optional `duration_ms` on article summaries, carrying a
+  positive narration duration when known and otherwise null/absent. Older
+  responses remain compatible; nonpositive values preserve cached durations.
+- A read-only deployed HTTP check on 2026-11-12 confirmed positive durations for
+  all 14 narrated articles in the November 16 issue. The backend change and any
+  historical metadata backfill are separate deliverables; see the
+  [backend handoff](backend-duration-handoff.md).
 - Never call the audio resolver for every row or retain signed stream URLs in
   browse metadata. FR-001 is only partially delivered if previously unplayed
   articles still lack duration metadata.
@@ -224,8 +225,8 @@ with known audio duration and one not yet resolved for playback.
 
 ### Delivery order and completion gates
 
-Ticket 01 is skipped at the user's request. Steps 2 through 5 are implemented in
-tickets 02 through 05. Steps 6 and 7 remain planned.
+Ticket 01 is skipped at the user's request. Steps 2 through 6 are implemented in
+tickets 02 through 06. Step 7 remains pending.
 
 | Step | Scope | Completion gate |
 | --- | --- | --- |
@@ -234,7 +235,7 @@ tickets 02 through 05. Steps 6 and 7 remain planned.
 | 3 | Shared issue summaries, persistence, and updates, FR-002/FR-003 | Implemented in ticket 03: shared node summaries and magazine fractions survive refresh, completion, restart, and metadata eviction. Folder placement follows in ticket 04; host acceptance remains in step 7. |
 | 4 | Car browse folders, FR-004, plus article-list summary placement | Implemented in ticket 04: filter folders, shared summary titles, filtering before paging, and per-parent live counts. Host presentation and active-playback acceptance remain in step 7. |
 | 5 | Rewind compatibility, FR-005 | Implemented in ticket 05 and confirmed on DHU. The full rewind matrix remains in step 7. |
-| 6 | [Ticket 06](issues/06-consume-summary-durations.md) and backend summary duration coverage, remaining FR-001 | Known durations are available before first playback where the backend has narration metadata; absent fields remain compatible. |
+| 6 | [Ticket 06](issues/06-consume-summary-durations.md) and backend summary duration coverage, remaining FR-001 | Implemented: known durations are available before first playback where the backend has narration metadata; absent fields remain compatible. Deployed summary metadata verified for the November 16 issue. Host acceptance remains in step 7. |
 | 7 | Integration and host acceptance | Run relevant automated checks and the phone/DHU/car matrix; record any remaining host limitations. |
 
 ## Testing Decisions

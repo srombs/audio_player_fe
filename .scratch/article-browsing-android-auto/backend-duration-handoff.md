@@ -40,3 +40,14 @@ backfill, outside the issue-list request path.
   or `null`. Older clients can continue to read the response.
 - Record the source used to populate durations, whether narration URLs had to
   be loaded, and what coverage the sync or backfill achieved for existing issues.
+
+## Observed backend delivery — 2026-11-12
+
+The user supplied CLI output for the November 16, 2026 issue containing summary
+durations. A read-only check of the configured deployed HTTP endpoint,
+`GET /issues/2026-11-16/articles`, also returned response version 1 with 24
+articles: all 14 explicitly narrated articles had positive integer `duration_ms`
+values, all 8 explicitly unnarrated articles had null durations, and the 2
+unknown-availability articles had null durations. No audio-resolution requests
+were made for this check. This verifies the summary contract for that issue;
+historical backfill coverage and the population source remain backend concerns.

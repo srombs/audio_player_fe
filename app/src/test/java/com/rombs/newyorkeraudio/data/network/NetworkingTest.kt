@@ -1,7 +1,14 @@
 package com.rombs.newyorkeraudio.data.network
 
 import com.rombs.newyorkeraudio.data.repository.NetworkNewYorkerRepository
+import com.rombs.newyorkeraudio.data.repository.ArticleMetadataStorage
+import com.rombs.newyorkeraudio.playback.ArticleListenFilter
+import com.rombs.newyorkeraudio.playback.library.CatalogLibrary
+import com.rombs.newyorkeraudio.playback.library.CatalogStorage
+import com.rombs.newyorkeraudio.playback.library.issueFilterMediaId
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -141,6 +148,92 @@ class NetworkingTest {
                 assertEquals(updated, restored)
                 assertFalse(storage.value!!.contains(MP3))
                 assertEquals(1, transport.requests.count { it.method == "POST" })
+            } finally { transport.close() }
+        }
+    }
+
+    @Test fun `summary duration reaches fresh article rows and car browse before first playback`() = runBlocking {
+        val transport = Transport { SUMMARY_DURATIONS }
+        val storage = MetadataStorage()
+        val scope = CoroutineScope(coroutineContext + kotlinx.coroutines.Job())
+        try {
+            val repository = NetworkNewYorkerRepository(transport.api, storage)
+            val articles = repository.getArticles(DATE)
+            assertEquals(657_000L, articles.first().audio!!.durationMs)
+            assertNull(articles.first().audio!!.audioUrl)
+            assertNull(articles[1].audio)
+            assertNull(articles[2].audio!!.durationMs)
+            assertNull(articles[2].audioAvailable)
+            val restored = NetworkNewYorkerRepository(transport.api, storage)
+            assertEquals(articles.first(), restored.getArticleMetadata(URL))
+
+            val catalog = CatalogLibrary(restored, scope, object : CatalogStorage {
+                override fun read(): String? = null
+                override fun write(value: String) = Unit
+            })
+            val nodes = catalog.children(issueFilterMediaId(DATE, ArticleListenFilter.ALL), 0, 100)
+            assertEquals(listOf(URL, "$URL-unknown"), nodes.map { it.id })
+            assertEquals(657_000L, nodes.first().durationMs)
+            assertEquals("10 min · List description", nodes.first().displayDescription)
+            assertNull(nodes[1].durationMs)
+            assertNull(nodes[1].displayDescription)
+            assertEquals(2, transport.requests.size)
+            assertTrue(transport.requests.all { it.method == "GET" })
+        } finally { scope.cancel(); transport.close() }
+    }
+
+    @Test fun `unknown summary durations preserve cached values and stay absent on a cold load`() = runBlocking {
+        for (duration in listOf(null, "null", "0", "-1")) {
+            for (availability in listOf("true", "null")) {
+                for (cached in listOf(false, true)) {
+                    var summaries = SUMMARY_DURATIONS
+                    val transport = Transport { summaries }
+                    val storage = MetadataStorage()
+                    try {
+                        val repository = NetworkNewYorkerRepository(transport.api, storage)
+                        if (cached) repository.getArticles(DATE)
+                        summaries = ARTICLES.replace("\"audio_available\":true",
+                            "\"audio_available\":$availability" + (duration?.let { ",\"duration_ms\":$it" } ?: ""))
+                        val article = repository.getArticles(DATE).first()
+                        val expected = if (cached) 657_000L else null
+                        assertEquals("duration=$duration, availability=$availability, cached=$cached",
+                            expected, article.audio!!.durationMs)
+                        assertNull(article.audio!!.audioUrl)
+                        assertEquals(article, NetworkNewYorkerRepository(transport.api, storage).getArticleMetadata(URL))
+                        assertTrue(transport.requests.all { it.method == "GET" })
+                    } finally { transport.close() }
+                }
+            }
+        }
+    }
+
+    @Test fun `positive summary duration replaces learned duration and explicit absence clears it`() = runBlocking {
+        var summaries = SUMMARY_DURATIONS
+        val transport = Transport { if (it.method == "POST") AUDIO else summaries }
+        val storage = MetadataStorage()
+        try {
+            val repository = NetworkNewYorkerRepository(transport.api, storage)
+            repository.resolveAudio(URL)
+            assertEquals(123_000L, repository.getArticleMetadata(URL).audio!!.durationMs)
+            assertEquals(657_000L, repository.getArticles(DATE).first().audio!!.durationMs)
+            // An explicit absence wins even if the response includes a contradictory duration.
+            summaries = SUMMARY_DURATIONS.replace("\"audio_available\":true", "\"audio_available\":false")
+            val absent = repository.getArticles(DATE).first()
+            assertEquals(false, absent.audioAvailable)
+            assertNull(absent.audio)
+            assertNull(NetworkNewYorkerRepository(transport.api, storage).getArticleMetadata(URL).audio)
+            assertEquals(1, transport.requests.count { it.method == "POST" })
+        } finally { transport.close() }
+    }
+
+    @Test fun `summary durations retain long millisecond values and short positive recordings`() = runBlocking {
+        for (duration in listOf(1_000L, 3_000_000_000L)) {
+            val transport = Transport { SUMMARY_DURATIONS.replace("657000", duration.toString()) }
+            try {
+                val article = NetworkNewYorkerRepository(transport.api).getArticles(DATE).first()
+                assertEquals(duration, article.audio!!.durationMs)
+                assertNull(article.audio!!.audioUrl)
+                assertEquals(1, transport.requests.size)
             } finally { transport.close() }
         }
     }
@@ -375,6 +468,12 @@ class NetworkingTest {
         throw AssertionError("Expected BackendFailure")
     }
 
+    private class MetadataStorage : ArticleMetadataStorage {
+        private var value: String? = null
+        override fun read() = value
+        override fun write(value: String) { this.value = value }
+    }
+
     private class Transport(status: Int = 200, body: (Request) -> String) {
         val requests = mutableListOf<Request>()
         private val client = BackendClient.createHttpClient().newBuilder().addInterceptor { chain ->
@@ -397,6 +496,10 @@ class NetworkingTest {
         private val ISSUE = """{"issue_date":"$DATE","label":"October 12, 2026","url":"https://www.newyorker.com/magazine/2026/10/12","cover_image_url":"https://media.newyorker.com/cover.jpg"}"""
         private val ISSUES = """{"updated_at":"2026-10-12T00:00:00Z","history_complete":false,"issues":[$ISSUE]}"""
         private val ARTICLES = """{"issue":$ISSUE,"fetched_at":"2026-10-12T00:00:00Z","articles":[{"title":"List title","url":"$URL","byline":"List author","description":"List description","section":"Books","image_url":"https://media.newyorker.com/story.jpg","audio_available":true},{"title":"No narration","url":"$URL-no-audio","audio_available":false},{"title":"Unknown narration","url":"$URL-unknown","rubric":"Fiction","audio_available":null}]}"""
+        private val SUMMARY_DURATIONS = ARTICLES.replace("{\"issue\":", "{\"version\":1,\"issue\":")
+            .replace("\"audio_available\":true", "\"audio_available\":true,\"duration_ms\":657000")
+            .replace("\"audio_available\":false", "\"audio_available\":false,\"duration_ms\":null")
+            .replace("\"audio_available\":null", "\"audio_available\":null,\"duration_ms\":null")
         private val AUDIO = """{"article":{"id":"backend-article-id","title":"Resolved title","description":"Resolved description","url":"$URL","authors":["Author One","Author Two"]},"audio":{"audio_id":"narration-id","duration_ms":123000,"audio_url":"$MP3","content_type":"audio/mpeg","verified_at":"2026-10-12T00:00:00Z"}}"""
         private fun response(request: Request, status: Int, body: String) = Response.Builder()
             .request(request).protocol(Protocol.HTTP_1_1).code(status).message("test")
