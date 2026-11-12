@@ -96,8 +96,12 @@ class MediaLibrarySmokeTest {
                 return result.value!!
             }
             val folders = children(issueMediaId(date))
-            assertEquals(listOf("All · 0/2 listened", "Unlistened · 0/2 listened", "Listened · 0/2 listened"),
+            assertEquals(listOf("All", "Unlistened", "Listened"),
                 folders.map { it.mediaMetadata.title.toString() })
+            assertEquals(listOf("All", "Unlistened", "Listened"),
+                folders.map { it.mediaMetadata.displayTitle.toString() })
+            assertEquals(listOf("0/2 listened", "2/2 unlistened", "0/2 listened"),
+                folders.map { it.mediaMetadata.subtitle.toString() })
             for (folder in folders) {
                 assertEquals(true, folder.mediaMetadata.isBrowsable)
                 assertEquals(false, folder.mediaMetadata.isPlayable)
@@ -141,8 +145,11 @@ class MediaLibrarySmokeTest {
             val completed = children(folders[2].mediaId).single()
             assertEquals(first.id, completed.mediaId)
             assertTrue(completed.mediaMetadata.subtitle.toString().startsWith("Listened · 27 min"))
-            assertEquals(listOf("All · 1/2 listened", "Unlistened · 1/2 listened", "Listened · 1/2 listened"),
-                children(issueMediaId(date)).map { it.mediaMetadata.title.toString() })
+            val updatedFolders = children(issueMediaId(date))
+            assertEquals(listOf("All", "Unlistened", "Listened"),
+                updatedFolders.map { it.mediaMetadata.title.toString() })
+            assertEquals(listOf("1/2 listened", "1/2 unlistened", "1/2 listened"),
+                updatedFolders.map { it.mediaMetadata.subtitle.toString() })
             instrumentation.runOnMainSync {
                 assertEquals(originalId, browser.currentMediaItem?.mediaId)
                 assertEquals(originalPlay, browser.playWhenReady)

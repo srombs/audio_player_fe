@@ -63,18 +63,33 @@ class CatalogLibraryTest {
         assertEquals(0, repository.issueCalls + repository.articleCalls)
     }
 
-    @Test(timeout = 5000) fun `opening an issue offers three nonplayable filters with shared progress`() = exercise { scope ->
+    @Test(timeout = 5000) fun `opening an issue offers three nonplayable filters with category counts in subtitles`() = exercise { scope ->
         val repository = Repository().apply {
             articleList = listOf(article, article.copy(id = article.id + "-second"))
         }
         val catalog = CatalogLibrary(repository, scope, Storage(), initialListenedIds = setOf(article.id))
         val folders = catalog.children(issueMediaId(date), 0, Int.MAX_VALUE)
-        assertEquals(listOf("All · 1/2 listened", "Unlistened · 1/2 listened", "Listened · 1/2 listened"),
-            folders.map { it.displayTitle })
+        assertEquals(listOf("All", "Unlistened", "Listened"), folders.map { it.displayTitle })
+        assertEquals(listOf("1/2 listened", "1/2 unlistened", "1/2 listened"), folders.map { it.displayDescription })
         assertTrue(folders.all { it.browsable && !it.playable })
         assertEquals(3, folders.map { it.id }.distinct().size)
         assertEquals(folders, folders.map { catalog.item(it.id) })
         assertEquals(listOf(folders[1]), catalog.children(issueMediaId(date), 1, 1))
+    }
+
+    @Test(timeout = 5000) fun `category subtitles track none some and all listened without repeating counts in titles`() = exercise { scope ->
+        val repository = Repository().apply {
+            articleList = (1..16).map { article.copy(id = article.id + "-$it") }
+        }
+        val catalog = CatalogLibrary(repository, scope, Storage())
+        for (listened in listOf(0, 5, 16)) {
+            catalog.listeningHistoryChanged(repository.articleList.take(listened).map { it.id }.toSet())
+            val folders = catalog.children(issueMediaId(date), 0, 3)
+            assertEquals(listOf("All", "Unlistened", "Listened"), folders.map { it.displayTitle })
+            assertEquals(listOf("$listened/16 listened", "${16 - listened}/16 unlistened", "$listened/16 listened"),
+                folders.map { it.displayDescription })
+            assertEquals(folders, folders.map { catalog.item(it.id) })
+        }
     }
 
     @Test(timeout = 5000) fun `filters use eligible history membership before paging and keep article identity`() = exercise { scope ->
@@ -99,8 +114,8 @@ class CatalogLibraryTest {
         assertEquals(article.imageUrl, node.artworkUrl)
         assertEquals(article.audio!!.durationMs, node.durationMs)
         assertTrue(node.playable && !node.browsable)
-        assertEquals(listOf("All · 2/4 listened", "Unlistened · 2/4 listened", "Listened · 2/4 listened"),
-            catalog.children(issueMediaId(date), 0, 3).map { it.displayTitle })
+        assertEquals(listOf("2/4 listened", "2/4 unlistened", "2/4 listened"),
+            catalog.children(issueMediaId(date), 0, 3).map { it.displayDescription })
     }
 
     @Test(timeout = 5000) fun `completion refreshes each filter count and all affected folder summaries`() = exercise { scope ->
@@ -134,7 +149,8 @@ class CatalogLibraryTest {
             assertEquals(expected, changes.associate { it.parentId to it.count })
             for (day in listOf(date, otherDate)) {
                 assertEquals("2/3 listened", catalog.item(issueMediaId(day)).displayDescription)
-                assertTrue(catalog.children(issueMediaId(day), 0, 3).all { it.issueProgress == IssueListeningSummary(2, 3) })
+                assertEquals(listOf("2/3 listened", "1/3 unlistened", "2/3 listened"),
+                    catalog.children(issueMediaId(day), 0, 3).map { it.displayDescription })
                 assertEquals(listOf(third.id), catalog.children(issueFilterMediaId(day, ArticleListenFilter.UNLISTENED), 0, 100).map { it.id })
             }
             changes.clear()
@@ -186,10 +202,12 @@ class CatalogLibraryTest {
         try { catalog.children(listened, 0, 100); fail("Expected load failure") } catch (_: java.io.IOException) {}
         repository.failure = null
         assertTrue(catalog.children(listened, 0, 100).isEmpty())
-        assertEquals("Listened · 0/1 listened", catalog.item(listened).displayTitle)
+        assertEquals("Listened", catalog.item(listened).displayTitle)
+        assertEquals("0/1 listened", catalog.item(listened).displayDescription)
         val empty = CatalogLibrary(Repository().apply { articleList = listOf(article.copy(audioAvailable = false)) }, scope, Storage())
-        assertEquals(listOf("All · 0/0 listened", "Unlistened · 0/0 listened", "Listened · 0/0 listened"),
-            empty.children(issueMediaId(date), 0, 3).map { it.displayTitle })
+        val emptyFolders = empty.children(issueMediaId(date), 0, 3)
+        assertEquals(listOf("All", "Unlistened", "Listened"), emptyFolders.map { it.displayTitle })
+        assertEquals(listOf("0/0 listened", "0/0 unlistened", "0/0 listened"), emptyFolders.map { it.displayDescription })
         for (filter in ArticleListenFilter.entries) assertTrue(empty.children(issueFilterMediaId(date, filter), 0, 100).isEmpty())
     }
 
@@ -203,8 +221,8 @@ class CatalogLibraryTest {
         val restored = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(article.id)) { 400_000 }
         val folders = restored.children(issueMediaId(date), 0, 3)
         assertEquals(original.map { it.id }, folders.map { it.id })
-        assertEquals(listOf("All · 1/2 listened", "Unlistened · 1/2 listened", "Listened · 1/2 listened"),
-            folders.map { it.displayTitle })
+        assertEquals(listOf("All", "Unlistened", "Listened"), folders.map { it.displayTitle })
+        assertEquals(listOf("1/2 listened", "1/2 unlistened", "1/2 listened"), folders.map { it.displayDescription })
         assertEquals(listOf(article.id + "-second"), restored.children(folders[1].id, 0, 100).map { it.id })
         assertEquals(listOf(article.id), restored.children(folders[2].id, 0, 100).map { it.id })
         val saved = Json.parseToJsonElement(storage.value!!).jsonObject
@@ -451,12 +469,12 @@ class CatalogLibraryTest {
         for (heading in repository.issueList) catalog.children(issueFilterMediaId(heading.id, ArticleListenFilter.ALL), 0, 100)
         assertNull(catalog.cachedArticle(completed.id))
         assertEquals("1/124 listened", catalog.item(issueMediaId(date)).displayDescription)
-        assertEquals("Unlistened · 1/124 listened", catalog.item(issueFilterMediaId(date, ArticleListenFilter.UNLISTENED)).displayTitle)
+        assertEquals("123/124 unlistened", catalog.item(issueFilterMediaId(date, ArticleListenFilter.UNLISTENED)).displayDescription)
         assertFalse(storage.value!!.contains(article.audio!!.audioUrl!!))
         repository.failure = IllegalStateException("Offline")
         val restored = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(completed.id)) { 2000 }
         assertEquals("1/124 listened", restored.item(issueMediaId(date)).displayDescription)
-        assertEquals("Listened · 1/124 listened", restored.item(issueFilterMediaId(date, ArticleListenFilter.LISTENED)).displayTitle)
+        assertEquals("1/124 listened", restored.item(issueFilterMediaId(date, ArticleListenFilter.LISTENED)).displayDescription)
         restored.updateArticle(completed.copy(audio = null, audioAvailable = false))
         assertEquals("0/123 listened", restored.item(issueMediaId(date)).displayDescription)
         val again = CatalogLibrary(repository, scope, storage, initialListenedIds = setOf(completed.id)) { 2000 }
@@ -562,6 +580,7 @@ class CatalogLibraryTest {
         repository.failure = IllegalStateException("Offline")
         val restored = CatalogLibrary(repository, scope, storage) { 2000 }
         assertTrue(restored.children(LIBRARY_ISSUES_ID, 0, Int.MAX_VALUE).all { it.displayDescription == "0/1 listened" })
+        val unlistenedFolders = repository.issueList.map { issueFilterMediaId(it.id, ArticleListenFilter.UNLISTENED) }.toSet()
         val changes = mutableListOf<CatalogChange>()
         val received = CompletableDeferred<Unit>()
         val collector = scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -569,7 +588,10 @@ class CatalogLibraryTest {
                 yield()
                 changes.add(it)
                 // A notification consumer can read the catalog without blocking its writer.
-                if (it.parentId != LIBRARY_ISSUES_ID) assertEquals("1/1 listened", restored.item(it.parentId).displayDescription)
+                if (it.parentId != LIBRARY_ISSUES_ID) {
+                    val expected = if (it.parentId in unlistenedFolders) "0/1 unlistened" else "1/1 listened"
+                    assertEquals(expected, restored.item(it.parentId).displayDescription)
+                }
                 if (changes.size == 801) received.complete(Unit)
             }
         }

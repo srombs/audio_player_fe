@@ -32,12 +32,19 @@ the deployed November 16 issue supplies durations for all 14 narrated articles.
   presentation remains step 7 acceptance.
   The user subsequently reported "looks great" after opting to build locally;
   the complete host acceptance matrix and instrumentation execution remain pending.
+- [Ticket 07](issues/07-car-category-counts.md) replaces ticket 04's repeated
+  shared-count titles with category-only titles and one subtitle count. All and
+  Listened show listened/total; Unlistened shows remaining/total unlistened.
+  All 190 JVM tests and the connected real-MediaBrowser smoke test pass. Updated
+  DHU/car presentation remains step 7 acceptance.
 
 ## Fog
 
 - Ticket 04's folder navigation, heading visibility, and uninterrupted playback
   during live completion still need DHU/car acceptance.
 - DHU/car fraction visibility and live refresh acceptance remain unverified.
+- Ticket 07's category-only titles and category-specific subtitles need visual
+  DHU/car acceptance; automated MediaBrowser metadata and completion refresh pass.
 - The rewind edge cases and real-car check remain in step 7 host acceptance.
 - Summary duration presentation before first playback still needs phone/DHU/car
   acceptance. Historical backend duration coverage was not audited here.
