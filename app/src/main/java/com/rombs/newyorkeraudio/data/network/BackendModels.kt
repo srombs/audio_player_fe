@@ -28,6 +28,7 @@ data class ArticleSummaryDto(
     val description: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("audio_available") val audioAvailable: Boolean? = null,
+    @SerialName("duration_ms") val durationMs: Long? = null,
 )
 
 @Serializable

@@ -37,7 +37,7 @@ internal fun ArticleSummaryDto.toArticle(): Article = validResponse {
         imageUrl = imageUrl,
         section = section ?: rubric,
         // Unknown narration remains selectable for resolution. This is not a playable source.
-        audio = if (audioAvailable == false) null else AudioInfo(null, null),
+        audio = if (audioAvailable == false) null else AudioInfo(durationMs?.takeIf { it > 0 }, null),
         audioAvailable = audioAvailable,
         description = description?.trim()?.takeIf { it.isNotEmpty() },
     )

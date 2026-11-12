@@ -20,7 +20,8 @@ the implemented duration behavior and are not captured device screenshots.
 - Two-column issue grid with remote covers and bundled artwork fallbacks.
 - Article lists with thumbnails, section, title, author, and narration hints.
 - Metadata-only article pages; pressing Play resolves audio through the service,
-  with duration available after resolution. Fake data remains available for previews and tests.
+  with duration available from issue summaries before playback when supplied by
+  the backend. Fake data remains available for previews and tests.
 - Player page with artwork, metadata, play/pause, seek bar, elapsed/total time,
   15-second skips, and playback speeds from 0.75× through 2×.
 - Media3 ExoPlayer owned by a MediaLibraryService, with background playback,
@@ -127,8 +128,10 @@ Car catalog refreshes also retain duration when an explicitly narrated summary
 omits it; unknown availability preserves confirmed narration facts, while a
 confirmed absence clears narration metadata. Returning to a saved article
 therefore displays both its elapsed time and the matching seek-bar position
-before playback resumes, without resolving audio. Durations for articles that
-have never been resolved still depend on future backend summary metadata.
+before playback resumes, without resolving audio. Optional `duration_ms` metadata
+in issue article summaries also supplies durations before first playback. Missing,
+null, and nonpositive values retain valid cached durations; an explicit
+`audio_available: false` clears narration metadata. Browsing never resolves a stream.
 
 ## Android Auto foundation: steps 1–6
 
