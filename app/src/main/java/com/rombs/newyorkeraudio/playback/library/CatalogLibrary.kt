@@ -182,11 +182,16 @@ class CatalogLibrary(
         snapshot.issueArticles.asReversed().firstNotNullOfOrNull { entry -> entry.articles.firstOrNull { it.id == id } }
     }
 
-    /** Called under the mutex so every filter title uses the same whole-issue summary. */
+    /** Called under the mutex so category counts use one whole-issue membership/history snapshot. */
     private fun filterNode(folder: IssueFilterFolder): LibraryNode {
         val progress = summary(folder.date)
-        return LibraryNode(folder.id, folder.title, issueProgress = progress,
-            description = if (progress == null) "Progress unavailable" else null)
+        val description = when {
+            progress == null -> "Progress unavailable"
+            folder.filter == ArticleListenFilter.UNLISTENED ->
+                "${progress.total - progress.listened}/${progress.total} unlistened"
+            else -> progress.label
+        }
+        return LibraryNode(folder.id, folder.title, description = description)
     }
 
     /** Called under the catalog mutex so a page uses one membership/history snapshot. */

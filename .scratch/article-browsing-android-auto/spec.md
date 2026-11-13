@@ -13,6 +13,9 @@ the filter folders and article-list summary placement.
 15-second rewind button on DHU. [Ticket 06: summary durations](issues/06-consume-summary-durations.md)
 consumes backend narration lengths before first playback. Full host acceptance
 remains pending.
+[Ticket 07: category counts](issues/07-car-category-counts.md) corrects the car
+filter-folder labels and moves their counts into subtitles, as confirmed by the
+user after reviewing the DHU screenshot.
 
 Source: [feature requests](../../FEATURE_REQUESTS.md), FR-001 through FR-005.
 The testing approach was confirmed: reuse existing interfaces and test coverage.
@@ -43,7 +46,7 @@ This table describes the repository and includes recorded host results where ava
 | Request | Current source | Remaining work after device verification |
 | --- | --- | --- |
 | FR-001: article duration on phone and car | Phone and car lists consume optional backend summary durations before first playback and retain known durations after refresh. Car browse subtitles include duration before descriptions. The deployed November 16 issue supplies durations for all 14 narrated articles. | Verify phone/DHU/car presentation during integration; historical duration coverage belongs to the backend. |
-| FR-002: issue progress inside car article browsing | Shared summaries are exposed on catalog issue nodes and filter-folder titles for the article-list heading. Article rows retain their existing listened labels. | Verify actual heading visibility on DHU/car during integration. |
+| FR-002: issue progress inside car article browsing | Shared summaries are exposed on catalog issue nodes. Filter-folder subtitles show category counts against the whole-issue total. Article rows retain their existing listened labels. | Verify heading and category subtitle visibility on DHU/car during integration. |
 | FR-003: progress on car magazine entries | Magazine display titles include the shared listened/total count when membership is loaded. Cached counts survive eviction and restart. | Verify grid presentation on DHU/car during integration. |
 | FR-004: car listened filter | Car issues expose All / Unlistened / Listened folders using the phone's filter rules, with independent folder selection and per-filter live counts. | Verify navigation and live completion on DHU/car during integration. |
 | FR-005: short rewind on car player | Media3 1.9.1 publishes the existing Back 15 seconds button to Android Auto. The user confirmed the fix on DHU. | Complete the rewind edge cases and real-car check in step 7. |
@@ -110,9 +113,11 @@ with known audio duration and one not yet resolved for playback.
   from both numerator and denominator.
 - The numerator is the intersection of eligible issue article IDs and listened
   history. An article appearing in two issues counts once in each issue.
-- Use `3/12 listened` consistently. Counts always describe the unfiltered issue.
-  A confirmed empty eligible set is `0/0 listened`; unloaded metadata has no
-  numeric fraction and displays `Progress unavailable` where space permits.
+- Use `3/12 listened` for issue progress and the All/Listened category subtitles.
+  Unlistened uses `9/12 unlistened`. Denominators always describe the unfiltered
+  issue. A confirmed empty eligible set uses 0/0 with the category's label;
+  unloaded metadata has no numeric fraction and displays `Progress unavailable`
+  where space permits.
 - Use 15-second rewind to match the current phone/player configuration. A
   configurable interval and a separate 10-second button are outside this plan.
 
@@ -163,8 +168,10 @@ with known audio duration and one not yet resolved for playback.
   membership, mark its summary unavailable rather than reporting an exact total.
 - Render a short fraction in magazine display titles, because the requested car
   grid can omit subtitles. Keep the underlying magazine title unchanged. Put the
-  fraction in filter-folder titles too, allowing the host to use it as the
-  article-list heading. Verify actual visibility in DHU and the car.
+  category names alone in filter-folder titles, with counts shown once in
+  subtitles: All and Listened show listened/total, while Unlistened shows
+  remaining/total unlistened. Ticket 07 supersedes the earlier shared-title
+  placement. Verify actual visibility in DHU and the car.
 - Return cached summaries immediately. Use existing deduplicated catalog loads
   to hydrate selected issues and recent/requested issue pages in bounded
   background batches; do not block the root or eagerly fetch 200 article lists.
@@ -185,8 +192,9 @@ with known audio duration and one not yet resolved for playback.
 - Reuse `ArticleListenFilter` and `filterListenedArticles`; introduce no new
   filtering rules or history store.
 - Proposed browse path: Issues → selected issue → All / Unlistened / Listened
-  folders → articles. Each filter folder includes the whole-issue fraction in
-  its display title, for example `Unlistened · 3/12 listened`.
+  folders → articles. Filter-folder titles are category names only. Subtitles
+  show `3/12 listened` for All/Listened and `9/12 unlistened` for Unlistened,
+  using the complete eligible issue total rather than the filtered list size.
 - Give filter folders deterministic IDs encoding issue identity and the filter.
   Keep issue IDs and playable article IDs stable. Extend folder parsing and item
   lookup so filtered parents cannot be mistaken for article URLs.

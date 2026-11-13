@@ -149,10 +149,11 @@ heading → All / Unlistened / Listened → article, plus Continue Listening. It
 metadata without resolving audio. Known unnarrated entries are excluded and
 unknown narration remains selectable.
 
-Filter folder titles carry the shared whole-issue progress, such as
-`Unlistened · 3/12 listened`. Filtering precedes pagination and uses durable
+Filter folder titles are All, Unlistened, and Listened. Their subtitles show
+category counts against the complete issue: All and Listened show `3/12 listened`,
+while Unlistened shows `9/12 unlistened`. Filtering precedes pagination and uses durable
 listening history without changing the phone's saved filter. Completion updates
-the folder titles and each filtered list while the current article keeps playing.
+the folder subtitles and each filtered list while the current article keeps playing.
 The existing 100-article browse cap applies; the summary counts complete issue
 membership. Folder/heading visibility and active-playback behavior still need
 DHU/car acceptance.
